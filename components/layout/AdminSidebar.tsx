@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { brandConfig } from "@/config/brand";
-import { adminLinks } from "@/config/admin";
+import { adminNavGroups } from "@/config/admin";
 import { cn } from "@/utils/cn";
 import { ShieldAlert } from "lucide-react";
 
@@ -22,34 +22,48 @@ export function AdminSidebar() {
         </Link>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto py-6">
-        <ul className="grid gap-1 px-4">
-          {adminLinks.map((link) => {
-            const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
-            const Icon = link.icon;
+      {/* Navigation Links (Grouped) */}
+      <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+        <div className="px-3 space-y-6">
+          {adminNavGroups.map((group, index) => (
+            <div key={index}>
+              {/* Category Header */}
+              {group.label !== "Overview" && (
+                <h4 className="mb-2 px-4 text-xs font-bold uppercase tracking-wider text-secondary-foreground/50">
+                  {group.label}
+                </h4>
+              )}
+              
+              {/* Links under category */}
+              <ul className="grid gap-1">
+                {group.items.map((link) => {
+                  const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`);
+                  const Icon = link.icon;
 
-            return (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-secondary-foreground/70 hover:bg-secondary-foreground/10 hover:text-white"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.title}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                  return (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-accent text-accent-foreground shadow-sm"
+                            : "text-secondary-foreground/70 hover:bg-secondary-foreground/10 hover:text-white"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {link.title}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       </nav>
 
-      {/* Admin Info (Bottom) */}
+      {/* Admin Info & Return to Portal */}
       <div className="border-t border-secondary-foreground/10 p-4 bg-primary/50">
         <div className="flex items-center gap-3 mb-4 px-2">
           <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold">
@@ -60,9 +74,12 @@ export function AdminSidebar() {
             <span className="text-xs text-white/50">Super Admin</span>
           </div>
         </div>
-        <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-400/10">
+        <Link 
+          href="/dashboard" 
+          className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-bold text-white bg-secondary-foreground/10 transition-colors hover:bg-red-500/20 hover:text-red-400"
+        >
           Return to Portal
-        </button>
+        </Link>
       </div>
     </aside>
   );

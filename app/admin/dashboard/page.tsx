@@ -11,35 +11,47 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
   // 1. Fetch Total Students Count
-  const { count: studentCount } = await supabase
+  const { count: studentCount, error: studentError } = await supabase
     .from("profiles")
     .select("*", { count: 'exact', head: true })
     .eq("role", "student");
 
   // 2. Fetch Active Courses Count
-  const { count: courseCount } = await supabase
+  const { count: courseCount, error: courseError } = await supabase
     .from("courses")
     .select("*", { count: 'exact', head: true })
     .eq("status", "published");
 
   // 3. Fetch Active Quests (Challenges) Count
-  const { count: questCount } = await supabase
+  const { count: questCount, error: questError } = await supabase
     .from("daily_challenges")
     .select("*", { count: 'exact', head: true })
     .eq("status", "published");
 
-  // 4. Fetch 5 Most Recent Users for the table
+  // 4. Fetch Pending Invitations Count (New Dynamic Fetch!)
+  const { count: inviteCount, error: inviteError } = await supabase
+    .from("invitations")
+    .select("*", { count: 'exact', head: true })
+    .eq("status", "sent");
+
+  // Log errors to server console if any (for easy debugging)
+  if (studentError || courseError || questError || inviteError) {
+    console.error("Admin Dashboard Fetch Errors:", { studentError, courseError, questError, inviteError });
+  }
+
+  // 5. Fetch 5 Most Recent Users for the table
   const { data: recentUsers } = await supabase
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(5);
 
+  // Dynamic KPIs Array
   const KPIS = [
     { title: "Total Students", value: studentCount || 0, change: "Registered users", icon: Users },
     { title: "Active Quests", value: questCount || 0, change: "Currently published", icon: Swords },
     { title: "Published Courses", value: courseCount || 0, change: "Available to learn", icon: Activity },
-    { title: "Pending Invites", value: "0", change: "System automated", icon: Mailbox },
+    { title: "Pending Invites", value: inviteCount || 0, change: "Awaiting acceptance", icon: Mailbox },
   ];
 
   return (
@@ -70,8 +82,9 @@ export default async function AdminDashboardPage() {
         })}
       </div>
 
-      {/* Recent Activity & Invite Requests */}
+      {/* Recent Activity & Quick Actions */}
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Recent Users Table */}
         <Card className="flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -102,7 +115,7 @@ export default async function AdminDashboardPage() {
                           <Avatar className="w-8 h-8">
                             <AvatarImage src={user.avatar_url || ""} />
                             <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                              {user.full_name ? user.full_name.charAt(0) : "U"}
+                              {user.full_name ? user.full_name.charAt(0).toUpperCase() : "U"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
@@ -117,13 +130,19 @@ export default async function AdminDashboardPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-sm text-foreground/70">
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {new Date(user.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        })}
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-4 text-foreground/50">No recent users found.</TableCell>
+                    <TableCell colSpan={3} className="text-center py-8 text-foreground/50">
+                      No recent users found.
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -137,7 +156,7 @@ export default async function AdminDashboardPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start h-12" asChild>
+            <Button variant="outline" className="w-full justify-start h-14 transition-colors hover:border-accent hover:text-accent" asChild>
               <Link href="/admin/challenges">
                 <Swords className="mr-3 w-5 h-5 text-accent" />
                 <div className="text-left">
@@ -146,14 +165,14 @@ export default async function AdminDashboardPage() {
                 </div>
               </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start h-12">
+            <Button variant="outline" className="w-full justify-start h-14 transition-colors hover:border-primary hover:text-primary">
               <Megaphone className="mr-3 w-5 h-5 text-primary" />
               <div className="text-left">
                 <div className="font-medium">Post Announcement</div>
                 <div className="text-xs text-foreground/50">Notify all active cohorts</div>
               </div>
             </Button>
-            <Button variant="outline" className="w-full justify-start h-12" asChild>
+            <Button variant="outline" className="w-full justify-start h-14 transition-colors hover:border-green-500 hover:text-green-500" asChild>
               <Link href="/admin/users">
                 <Users className="mr-3 w-5 h-5 text-green-500" />
                 <div className="text-left">
