@@ -1,40 +1,22 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Image as ImageIcon, Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 
-// Mock Data based on gallery_items schema
-const GALLERY_ITEMS = [
-  {
-    id: "g1",
-    title: "Web3 Hackathon Winners",
-    caption: "Team 'CryptoPunks' taking the first prize!",
-    imagePath: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1000&auto=format&fit=crop",
-    category: "Hackathon",
-  },
-  {
-    id: "g2",
-    title: "Pune Tech Meetup 2026",
-    caption: "Our largest offline gathering so far.",
-    imagePath: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1000&auto=format&fit=crop",
-    category: "Meetup",
-  },
-  {
-    id: "g3",
-    title: "Late Night Coding Session",
-    caption: "Building the next big thing in AI.",
-    imagePath: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1000&auto=format&fit=crop",
-    category: "Community",
-  },
-  {
-    id: "g4",
-    title: "Next.js Workshop",
-    caption: "Live coding session on Server Components.",
-    imagePath: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1000&auto=format&fit=crop",
-    category: "Workshop",
-  },
-];
+export default async function GalleryPage() {
+  const supabase = await createClient();
 
-export default function GalleryPage() {
+  // 1. Database se sirf 'published' items fetch kar rahe hain
+  const { data: galleryItems, error } = await supabase
+    .from("gallery_items")
+    .select("*")
+    .eq("status", "published")
+    .order("published_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching gallery items:", error);
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -46,32 +28,48 @@ export default function GalleryPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-        {GALLERY_ITEMS.map((item) => (
-          <div key={item.id} className="group relative overflow-hidden rounded-xl border border-border bg-surface/50 transition-all hover:shadow-lg">
-            <div className="relative aspect-[4/3] w-full overflow-hidden">
-              <Image
-                src={item.imagePath}
-                alt={item.title}
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
-              
-              <div className="absolute top-4 left-4">
-                <Badge className="bg-accent text-accent-foreground border-none">
-                  {item.category}
-                </Badge>
-              </div>
-              
-              <div className="absolute bottom-4 left-4 right-4">
-                <h3 className="font-heading text-lg font-bold text-white flex items-center gap-2">
-                  {item.title} <Sparkles className="w-4 h-4 text-accent" />
-                </h3>
-                <p className="text-sm text-white/80 mt-1 line-clamp-2">{item.caption}</p>
+        {galleryItems?.map((item) => {
+          // 2. Image URL logic: Agar tum DB mein direct link (http...) save karte ho toh wo use hoga, 
+          // nahi toh Supabase Storage ke 'gallery' bucket ka public URL banayega.
+          const imageUrl = item.image_path?.startsWith("http")
+            ? item.image_path
+            : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/gallery/${item.image_path}`;
+
+          return (
+            <div key={item.id} className="group relative overflow-hidden rounded-xl border border-border bg-surface/50 transition-all hover:shadow-lg">
+              <div className="relative aspect-[4/3] w-full overflow-hidden">
+                <Image
+                  src={imageUrl}
+                  alt={item.alt_text || item.title} // Schema ke hisaab se alt_text use kiya
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+                
+                <div className="absolute top-4 left-4">
+                  {/* Note: Schema mein 'category' column nahi hai, isliye fallback text lagaya hai. Tum chaho toh schema mein column add kar sakte ho */}
+                  <Badge className="bg-accent text-accent-foreground border-none">
+                    Community
+                  </Badge>
+                </div>
+                
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h3 className="font-heading text-lg font-bold text-white flex items-center gap-2">
+                    {item.title} <Sparkles className="w-4 h-4 text-accent" />
+                  </h3>
+                  <p className="text-sm text-white/80 mt-1 line-clamp-2">{item.caption}</p>
+                </div>
               </div>
             </div>
+          );
+        })}
+
+        {/* Agar database khali ho toh ye dikhega */}
+        {(!galleryItems || galleryItems.length === 0) && (
+          <div className="col-span-full py-12 text-center text-foreground/50 border border-dashed border-border rounded-xl">
+            No memories published yet.
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-"use server"
+"use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -23,8 +23,12 @@ export async function loginUser(formData: FormData) {
   redirect("/dashboard");
 }
 
-export async function logoutUser() {
+export async function logout() {
   const supabase = await createClient();
+  
+  // Supabase se session clear karo
   await supabase.auth.signOut();
+  
+  // User ko wapas login page par bhej do
   redirect("/login");
 }
