@@ -14,81 +14,74 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
 
-  // Close mobile menu automatically on route change
+  // Close mobile menu on route change
   React.useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <header className="fixed top-4 inset-x-0 z-50 flex flex-col items-center px-4 sm:px-6 pointer-events-none">
+      
+      {/* 
+        Outer Container: Completely Transparent, NO Background, NO Border.
+        pointer-events-auto ensures clicks still register on the items inside.
+      */}
+      <div className="relative flex w-full max-w-6xl items-center justify-between h-16 pointer-events-auto">
         
-        {/* Brand / Logo Section */}
-        <div className="flex items-center gap-8 md:gap-12">
-          <Link 
-            href="/" 
-            className="group flex items-center space-x-3 transition-transform duration-300 hover:scale-[1.02]"
-          >
-            {/* Custom Logo Image with subtle hover effect */}
-            <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-surface/50 shadow-sm ring-1 ring-border/50 transition-all group-hover:shadow-md group-hover:ring-accent/40">
-              <Image 
-                src="/logo/logo.png" 
-                alt={`${brandConfig.name} Logo`} 
-                width={40} 
-                height={40} 
-                className="object-contain p-1 transition-transform duration-300 group-hover:scale-110"
-                priority
-              />
-            </div>
-            <span className="font-heading text-2xl font-extrabold tracking-tighter text-primary">
-              {brandConfig.name}
-            </span>
-          </Link>
-          
-          {/* Desktop Navigation (Config Driven) */}
-          <nav className="hidden md:flex items-center gap-8">
-            {publicNavLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="group relative py-2 text-sm font-semibold transition-colors"
-                >
-                  <span className={cn(
-                    "relative z-10 transition-colors duration-200",
-                    isActive ? "text-accent" : "text-foreground/70 group-hover:text-primary"
-                  )}>
-                    {link.title}
-                  </span>
-                  
-                  {/* Sleek Animated Underline */}
-                  <span 
-                    className={cn(
-                      "absolute bottom-0 left-0 h-[2px] rounded-full bg-accent transition-all duration-300 ease-out",
-                      isActive ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-full group-hover:opacity-100"
-                    )}
-                  />
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+        {/* 1. Left: Brand / Logo - 99% transparent glass on hover */}
+        <Link 
+          href="/" 
+          className="group flex items-center space-x-3 transition-all duration-300 px-3 py-2 rounded-full border border-transparent hover:bg-white/[0.02] hover:border-white/5 hover:backdrop-blur-sm"
+        >
+          <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden transition-all duration-300">
+            <Image 
+              src="/logo/logo.svg" 
+              alt={`${brandConfig.name} Logo`} 
+              width={32} 
+              height={32} 
+              className="object-contain transition-transform duration-300 group-hover:scale-110"
+              priority
+            />
+          </div>
+          <span className="font-heading text-xl tracking-tight text-foreground hidden sm:block">
+            {brandConfig.name}
+          </span>
+        </Link>
+        
+        {/* 2. Center: Desktop Navigation with 99% transparent individual glass effects */}
+        <nav className="hidden md:flex items-center gap-1">
+          {publicNavLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "relative px-5 py-2 text-sm font-medium transition-all duration-300 rounded-full border",
+                  isActive 
+                    ? "bg-white/[0.04] border-white/10 text-foreground backdrop-blur-md shadow-sm" // Active state slightly visible
+                    : "border-transparent bg-transparent text-[#E2D1FE]/80 hover:bg-white/[0.02] hover:border-white/5 hover:text-foreground hover:backdrop-blur-sm"
+                )}
+              >
+                {link.title}
+              </Link>
+            );
+          })}
+        </nav>
 
-        {/* Desktop CTA Buttons */}
-        <div className="hidden md:flex items-center gap-5">
+        {/* 3. Right: CTA Buttons */}
+        <div className="hidden md:flex items-center gap-2">
           <Link href={authLinks.login}>
             <Button 
               variant="ghost" 
-              className="font-semibold text-foreground/80 hover:text-primary hover:bg-surface/80 transition-all duration-200"
+              className="text-[#E2D1FE] hover:text-foreground transition-all duration-300 rounded-full px-5 border border-transparent hover:bg-white/[0.02] hover:border-white/5 hover:backdrop-blur-sm"
             >
               Sign In
             </Button>
           </Link>
           <Link href={authLinks.requestInvite}>
-            {/* Premium Glow Button Effect */}
             <Button 
-              className="relative overflow-hidden bg-accent px-6 font-bold text-accent-foreground shadow-[0_0_15px_rgba(var(--accent),0.2)] ring-1 ring-accent/50 transition-all duration-300 hover:shadow-[0_0_25px_rgba(var(--accent),0.4)] hover:ring-accent hover:-translate-y-0.5 active:translate-y-0"
+              className="bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] rounded-full px-6"
             >
               Request Invite
             </Button>
@@ -97,19 +90,21 @@ export function Navbar() {
 
         {/* Mobile Menu Toggle Button */}
         <button 
-          className="flex md:hidden rounded-md p-2 text-foreground/80 transition-all hover:bg-surface hover:text-primary active:scale-95"
+          className="flex md:hidden p-2.5 text-[#E2D1FE] hover:text-foreground transition-all duration-300 rounded-full border border-transparent hover:bg-white/[0.02] hover:border-white/5 hover:backdrop-blur-sm active:scale-95"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle menu"
         >
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* Mobile Navigation Dropdown */}
+      {/* Mobile Navigation Dropdown (Kept glass panel so it's readable over content) */}
       <div 
         className={cn(
-          "md:hidden overflow-hidden transition-all duration-300 ease-in-out border-b border-border/50 bg-background/95 backdrop-blur-xl",
-          isMobileMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0 border-transparent"
+          "md:hidden w-full max-w-6xl mt-3 overflow-hidden transition-all duration-300 ease-in-out rounded-3xl pointer-events-auto",
+          isMobileMenuOpen 
+            ? "max-h-[400px] opacity-100 surface-glass-panel border border-white/10 shadow-2xl" 
+            : "max-h-0 opacity-0 border-transparent"
         )}
       >
         <nav className="flex flex-col px-6 py-6 space-y-4">
@@ -120,23 +115,25 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-base font-semibold transition-colors",
-                  isActive ? "text-accent" : "text-foreground/80 hover:text-primary"
+                  "text-base font-medium transition-colors px-4 py-2 rounded-xl border",
+                  isActive 
+                    ? "bg-white/[0.04] border-white/10 text-foreground" 
+                    : "border-transparent bg-transparent text-[#E2D1FE]/72 hover:bg-white/[0.02] hover:text-foreground hover:border-white/5"
                 )}
               >
                 {link.title}
               </Link>
             );
           })}
-          <div className="h-px w-full bg-border/40 my-2" />
+          <div className="h-px w-full bg-white/5 my-2" />
           <div className="flex flex-col gap-3 pt-2">
             <Link href={authLinks.login} className="w-full">
-              <Button variant="outline" className="w-full justify-center border-border/50 bg-surface/50 hover:bg-surface font-semibold transition-colors">
+              <Button className="w-full justify-center bg-transparent text-foreground hover:bg-white/[0.02] transition-all rounded-full border border-white/5">
                 Sign In
               </Button>
             </Link>
             <Link href={authLinks.requestInvite} className="w-full">
-              <Button className="w-full justify-center bg-accent text-accent-foreground font-bold shadow-md hover:shadow-lg transition-all">
+              <Button className="w-full justify-center bg-brand-gradient text-foreground border-none accent-glow transition-all rounded-full">
                 Request Invite
               </Button>
             </Link>

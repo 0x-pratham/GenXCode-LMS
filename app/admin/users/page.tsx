@@ -9,6 +9,7 @@ import { Users, MailPlus, ShieldAlert, MoreVertical } from "lucide-react";
 export default async function AdminUsersPage() {
   const supabase = await createClient();
   
+  // Backend Logic Remains Unchanged
   // Fetch all user profiles from the database
   const { data: users, error } = await supabase
     .from("profiles")
@@ -20,89 +21,120 @@ export default async function AdminUsersPage() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+      
+      {/* Cinematic Header with Entry Animation */}
+      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-primary flex items-center gap-3">
-            <Users className="w-8 h-8 text-accent" />
-            User Management
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+              <Users className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              User <span className="text-transparent bg-clip-text bg-silver-gradient drop-shadow-md">Management</span>
+            </div>
           </h1>
-          <p className="text-foreground/70 mt-1">Manage student access, roles, and platform invitations.</p>
+          <p className="text-[#E2D1FE]/80 mt-4 text-lg font-medium drop-shadow-md max-w-xl">
+            Manage student access, assign administrative roles, and generate platform invitations.
+          </p>
         </div>
-        <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+        <Button className="h-12 px-6 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg shrink-0">
           <MailPlus className="w-4 h-4 mr-2" /> Generate Invite Link
         </Button>
       </div>
 
       {/* Users Table Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Registered Members</CardTitle>
-          <CardDescription>All users currently authenticated on the platform.</CardDescription>
+      <Card className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards bg-black/20 border-white/10 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden flex flex-col">
+        <CardHeader className="bg-black/10 border-b border-white/5 pt-8 px-8 pb-6">
+          <CardTitle className="text-2xl font-bold text-foreground">Registered Members</CardTitle>
+          <CardDescription className="text-sm font-medium text-[#E2D1FE]/60 mt-1">
+            All users currently authenticated on the platform.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+            <TableHeader className="bg-black/20 border-b border-white/5">
+              <TableRow className="border-none hover:bg-transparent">
+                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pl-8 py-4">User</TableHead>
+                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Role</TableHead>
+                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Status</TableHead>
+                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Joined Date</TableHead>
+                <TableHead className="text-right text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pr-8 py-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users && users.length > 0 ? (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={user.avatar_url || ""} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {user.full_name ? user.full_name.charAt(0) : "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium text-primary">
-                            {user.full_name || "Unknown User"}
+                users.map((user, index) => {
+                  const animationDelay = `${(index + 3) * 100}ms`;
+                  const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+
+                  return (
+                    <TableRow 
+                      key={user.id} 
+                      style={{ animationDelay }}
+                      className="animate-fade-in-up opacity-0 fill-mode-forwards border-b border-white/5 hover:bg-white/[0.03] transition-colors"
+                    >
+                      <TableCell className="pl-8 py-4">
+                        <div className="flex items-center gap-4">
+                          <Avatar className={`w-10 h-10 border shadow-inner ${isAdmin ? 'border-accent/40 shadow-[0_0_15px_rgba(134,56,205,0.2)]' : 'border-white/10'}`}>
+                            <AvatarImage src={user.avatar_url || ""} />
+                            <AvatarFallback className="bg-white/5 text-foreground font-bold text-sm">
+                              {user.full_name ? user.full_name.charAt(0).toUpperCase() : "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-bold text-foreground text-base drop-shadow-sm">
+                              {user.full_name || "Unknown User"}
+                            </div>
+                            <div className="text-xs font-medium text-[#E2D1FE]/50">{user.email}</div>
                           </div>
-                          <div className="text-xs text-foreground/50">{user.email}</div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          user.role === 'admin' || user.role === 'super_admin' 
-                            ? 'bg-purple-500/10 text-purple-600 border-purple-500/20 capitalize' 
-                            : 'capitalize'
-                        }
-                      >
-                        {user.role === 'super_admin' && <ShieldAlert className="w-3 h-3 mr-1" />}
-                        {user.role?.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={user.is_active ? 'bg-green-500' : 'bg-gray-500'}>
-                        {user.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-foreground/70">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="w-4 h-4 text-foreground/50" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge 
+                          variant="outline" 
+                          className={`capitalize px-3 py-1 font-bold ${
+                            isAdmin 
+                              ? 'bg-accent/10 text-accent border-accent/30 shadow-[0_0_10px_rgba(134,56,205,0.15)]' 
+                              : 'bg-white/5 text-[#E2D1FE] border-white/20'
+                          }`}
+                        >
+                          {user.role === 'super_admin' && <ShieldAlert className="w-3.5 h-3.5 mr-1.5" />}
+                          {user.role?.replace('_', ' ')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge 
+                          variant="outline"
+                          className={`capitalize px-3 py-1 font-bold ${
+                            user.is_active 
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                              : 'bg-white/5 text-[#E2D1FE]/50 border-white/10'
+                          }`}
+                        >
+                          {user.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <span className="text-sm font-medium text-[#E2D1FE]/70 bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                          {new Date(user.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric"
+                          })}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right pr-8 py-4">
+                        <Button variant="ghost" size="icon" className="text-[#E2D1FE]/50 hover:text-foreground hover:bg-white/10 rounded-xl transition-all">
+                          <MoreVertical className="w-5 h-5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-foreground/50">
+                  <TableCell colSpan={5} className="text-center py-16 text-[#E2D1FE]/50 font-medium">
                     No users found in the database.
                   </TableCell>
                 </TableRow>

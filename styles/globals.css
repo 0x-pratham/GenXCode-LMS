@@ -1,24 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #FFFFFF;
-  --color-foreground: #0D1232;
-  --color-surface: #F1E9E6;
-  --color-surface-foreground: #0D1232;
-  --color-primary: #0D1232;
-  --color-primary-foreground: #FFFFFF;
-  --color-secondary: #0F1333;
-  --color-secondary-foreground: #FFFFFF;
-  --color-accent: #FCB27E;
-  --color-accent-foreground: #0D1232;
-  --color-border: #E5E7EB;
-  --color-input: #E5E7EB;
-  --color-ring: #FCB27E;
-  
-  --radius-lg: 0.75rem;
-  --radius-md: calc(0.75rem - 2px);
-  --radius-sm: calc(0.75rem - 4px);
+  /* Core Palette */
+  --color-background: #0C0224;
+  --color-foreground: #FEFFFE;
 
+  /* Surfaces & Glass */
+  --color-surface: #22044B;
+  --color-surface-foreground: #FEFFFE;
+
+  /* Brand Accents */
+  --color-primary: #5F2295;
+  --color-primary-foreground: #FEFFFE;
+  --color-secondary: #22044B;
+  --color-secondary-foreground: #E2D1FE;
+  --color-accent: #8638CD;
+  --color-accent-foreground: #FEFFFE;
+
+  /* UI Elements */
+  --color-border: rgba(254, 255, 254, 0.12);
+  --color-input: rgba(254, 255, 254, 0.12);
+  --color-ring: #8638CD;
+
+  /* Brand Gradient */
+  --gradient-brand: linear-gradient(
+    135deg,
+    #0C0224 0%,
+    #22044B 35%,
+    #5F2295 68%,
+    #8638CD 100%
+  );
+
+  /* Soft Geometry Radius */
+  --radius-lg: 1.25rem;
+  --radius-md: 1rem;
+  --radius-sm: 0.75rem;
+
+  /* Typography */
   --font-sans: var(--font-google-sans), ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Times New Roman', Times, serif;
 }
@@ -27,14 +45,140 @@
   *, ::before, ::after {
     border-color: var(--color-border);
   }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* Adding a subtle dark background to prevent flashing during load */
+    @apply antialiased;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
-    font-weight: bold;
-    color: var(--color-primary);
+    font-weight: 700; /* Bold as per spec */
+    color: var(--color-foreground); /* Off White for dark mode */
+  }
+}
+
+@layer utilities {
+  /* Glass Surfaces as per Spec */
+  .surface-glass-01 {
+    background-color: rgba(254, 255, 254, 0.06);
+    border: 1px solid rgba(254, 255, 254, 0.10);
+  }
+
+  .surface-glass-02 {
+    background-color: rgba(254, 255, 254, 0.10);
+    border: 1px solid rgba(254, 255, 254, 0.16);
+  }
+
+  .surface-glass-panel {
+    background-color: rgba(34, 4, 75, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Core Brand Gradient Background */
+  .bg-brand-gradient {
+    background-image: var(--gradient-brand);
+  }
+
+  /* Orchid Accent Glow */
+  .accent-glow {
+    box-shadow: 0 0 24px rgba(134, 56, 205, 0.24);
+  }
+
+  .accent-glow-hover:hover {
+    box-shadow: 0 0 32px rgba(134, 56, 205, 0.40);
+  }
+}
+
+/* Add inside @layer utilities */
+  
+  @keyframes fade-in-up {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  .animate-gradient-shift {
+    animation: gradient-shift 5s ease infinite;
+  }
+
+  .fill-mode-forwards {
+    animation-fill-mode: forwards;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* High Impact Text Reveal Animation */
+  @keyframes text-focus-in {
+    0% {
+      filter: blur(12px);
+      opacity: 0;
+      transform: scale(1.1) translateY(10px);
+    }
+    100% {
+      filter: blur(0px);
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-text-focus-in {
+    animation: text-focus-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Crisp Professional Text Reveal */
+  /* Crisp Professional Text Reveal (Slowed Down) */
+  @keyframes reveal-blur {
+    0% {
+      filter: blur(20px);
+      opacity: 0;
+      transform: translateY(15px);
+      letter-spacing: -2px;
+    }
+    100% {
+      filter: blur(0px);
+      opacity: 1;
+      transform: translateY(0);
+      letter-spacing: normal;
+    }
+  }
+
+  .animate-reveal-blur {
+    /* 0.8s ki jagah 1.5s kar diya gaya hai for a slower, smoother reveal */
+    animation: reveal-blur 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  @layer utilities {
+  /* Existing styles... */
+
+  /* New Silver/Chrome Gradient for Text Legibility */
+  .bg-silver-gradient {
+    background-image: linear-gradient(135deg, #FFFFFF 0%, #E2D1FE 40%, #A39DB5 70%, #FFFFFF 100%);
   }
 }

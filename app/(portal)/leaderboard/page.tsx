@@ -1,14 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Flame } from "lucide-react";
+import { Trophy, Flame, Crown, Medal } from "lucide-react";
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
 
-  // Fetch profiles directly ordered by league memberships if available, or just profiles
+  // Backend Logic Remains Unchanged
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(`
@@ -41,89 +39,127 @@ export default async function LeaderboardPage() {
   }).sort((a, b) => b.xp_total - a.xp_total) || [];
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Header Banner */}
-      <div className="relative rounded-2xl bg-primary p-8 overflow-hidden shadow-lg border border-primary/20 text-white">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-accent/20 border border-accent/30 flex items-center justify-center">
-            <Trophy className="w-8 h-8 text-accent" />
-          </div>
-          <div>
-            <h1 className="font-heading text-3xl font-bold">Global Leaderboard</h1>
-            <p className="text-white/70 mt-1">Top developers ranked by total XP earned across leagues.</p>
-          </div>
+    <div className="space-y-10 max-w-5xl mx-auto pb-12 relative z-10">
+      
+      {/* Cinematic Header with Entry Animation */}
+      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+              <Trophy className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              Global <span className="text-transparent bg-clip-text bg-silver-gradient drop-shadow-md">Leaderboard</span>
+            </div>
+          </h1>
+          <p className="text-[#E2D1FE]/80 mt-4 text-lg font-medium drop-shadow-md max-w-xl">
+            Top developers ranked by total XP earned across all leagues and quests.
+          </p>
         </div>
       </div>
 
-      {/* Leaderboard Table Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>League Rankings</CardTitle>
-          <CardDescription>Compete with peers, earn XP through quests and submissions, and climb to the top.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-20 text-center">Rank</TableHead>
-                <TableHead>Developer</TableHead>
-                <TableHead>League</TableHead>
-                <TableHead className="text-right">Total XP</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {leaders && leaders.length > 0 ? (
-                leaders.map((item, index) => {
-                  const rank = index + 1;
-                  const leagueName = item.league ? item.league.replace('_', ' ') : "Code Starter";
+      <div className="w-full">
+        {/* Table Header (Visually distinct from rows) */}
+        <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards hidden md:flex items-center px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#E2D1FE]/50 mb-3 border-b border-white/5">
+          <div className="w-20 text-center">Rank</div>
+          <div className="flex-1">Developer</div>
+          <div className="w-40 text-center">League</div>
+          <div className="w-32 text-right">Total XP</div>
+        </div>
 
-                  return (
-                    <TableRow key={item.id} className={rank <= 3 ? "bg-accent/5 font-semibold" : ""}>
-                      <TableCell className="text-center font-heading text-lg font-bold">
-                        {rank === 1 ? <span className="text-yellow-500">🥇 #1</span> :
-                         rank === 2 ? <span className="text-slate-400">🥈 #2</span> :
-                         rank === 3 ? <span className="text-amber-600">🥉 #3</span> :
-                         `#${rank}`}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="w-9 h-9 border border-border">
-                            <AvatarImage src={item.avatar_url || ""} />
-                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                              {item.full_name.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="text-primary font-medium">{item.full_name}</div>
-                            <div className="text-xs text-foreground/50">{item.email}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {leagueName}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="inline-flex items-center gap-1 font-heading text-lg font-bold text-accent">
-                          <Flame className="w-4 h-4" /> {item.xp_total.toLocaleString()}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-12 text-foreground/50">
-                    No rankings available yet. Complete quests to populate the board!
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        {/* Leaderboard Rows */}
+        <div className="space-y-3">
+          {leaders && leaders.length > 0 ? (
+            leaders.map((item, index) => {
+              const rank = index + 1;
+              const leagueName = item.league ? item.league.replace('_', ' ') : "Code Starter";
+              const animationDelay = `${(index + 3) * 100}ms`;
+
+              // Special logic for Top 3 styling
+              const isFirst = rank === 1;
+              const isSecond = rank === 2;
+              const isThird = rank === 3;
+              
+              let rowBaseClass = "bg-black/20 border-white/5 text-foreground hover:bg-white/[0.04] hover:border-white/20";
+              let rankElement = <span className="font-heading text-xl font-bold text-[#E2D1FE]/60">#{rank}</span>;
+
+              if (isFirst) {
+                rowBaseClass = "bg-yellow-500/10 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.1)] hover:bg-yellow-500/20";
+                rankElement = <Crown className="w-7 h-7 text-yellow-400 drop-shadow-md mx-auto" />;
+              } else if (isSecond) {
+                rowBaseClass = "bg-slate-300/10 border-slate-300/30 shadow-[0_0_15px_rgba(203,213,225,0.05)] hover:bg-slate-300/20";
+                rankElement = <Medal className="w-7 h-7 text-slate-300 drop-shadow-md mx-auto" />;
+              } else if (isThird) {
+                rowBaseClass = "bg-amber-600/10 border-amber-600/30 shadow-[0_0_15px_rgba(217,119,6,0.05)] hover:bg-amber-600/20";
+                rankElement = <Medal className="w-7 h-7 text-amber-500 drop-shadow-md mx-auto" />;
+              }
+
+              return (
+                <div 
+                  key={item.id} 
+                  style={{ animationDelay }}
+                  className={`animate-fade-in-up opacity-0 fill-mode-forwards flex flex-col md:flex-row items-center p-4 md:px-6 md:py-4 rounded-2xl border backdrop-blur-xl transition-all duration-300 group ${rowBaseClass}`}
+                >
+                  {/* Rank */}
+                  <div className="w-full md:w-20 flex justify-center mb-3 md:mb-0">
+                    {rankElement}
+                  </div>
+                  
+                  {/* Developer Profile */}
+                  <div className="flex-1 flex items-center gap-4 w-full justify-center md:justify-start mb-4 md:mb-0">
+                    <Avatar className={`w-12 h-12 border-2 ${isFirst ? 'border-yellow-400/50' : isSecond ? 'border-slate-300/50' : isThird ? 'border-amber-500/50' : 'border-white/10 shadow-inner'}`}>
+                      <AvatarImage src={item.avatar_url || ""} />
+                      <AvatarFallback className="bg-white/5 text-foreground font-bold">
+                        {item.full_name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-center md:text-left">
+                      <div className="font-bold text-foreground text-lg">{item.full_name}</div>
+                      <div className="text-xs font-medium text-[#E2D1FE]/50">{item.email}</div>
+                    </div>
+                  </div>
+                  
+                  {/* League Badge */}
+                  <div className="w-full md:w-40 flex justify-center mb-4 md:mb-0">
+                    <Badge variant="outline" className={`capitalize px-3 py-1 font-bold ${
+                      isFirst ? 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10' : 
+                      isSecond ? 'border-slate-400/40 text-slate-300 bg-slate-400/10' : 
+                      isThird ? 'border-amber-600/40 text-amber-500 bg-amber-600/10' : 
+                      'border-white/20 text-[#E2D1FE] bg-white/5'
+                    }`}>
+                      {leagueName}
+                    </Badge>
+                  </div>
+                  
+                  {/* Total XP */}
+                  <div className="w-full md:w-32 flex justify-center md:justify-end">
+                    <span className={`inline-flex items-center gap-1.5 font-heading text-xl font-bold ${
+                      isFirst ? 'text-yellow-400' : 
+                      isSecond ? 'text-slate-300' : 
+                      isThird ? 'text-amber-500' : 
+                      'text-accent'
+                    }`}>
+                      <Flame className={`w-5 h-5 ${
+                        isFirst ? 'text-yellow-500 fill-yellow-500/20' : 
+                        isSecond ? 'text-slate-400 fill-slate-400/20' : 
+                        isThird ? 'text-amber-600 fill-amber-600/20' : 
+                        'fill-accent/20'
+                      }`} /> 
+                      {item.xp_total.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards py-16 text-center border border-dashed border-white/20 rounded-3xl bg-black/20 backdrop-blur-md">
+              <Trophy className="w-12 h-12 text-[#E2D1FE]/30 mx-auto mb-4" />
+              <h3 className="font-heading text-xl font-bold text-foreground">No Rankings Available</h3>
+              <p className="text-[#E2D1FE]/60 text-sm mt-2 max-w-sm mx-auto">Complete quests and masterclasses to populate the board!</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

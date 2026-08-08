@@ -12,7 +12,8 @@ import { createAnnouncement } from "@/app/actions/announcementActions";
 export default async function AdminAnnouncementsPage() {
   const supabase = await createClient();
 
-  // Fetch all announcements from Supabase
+  // Backend Logic Remains Unchanged[cite: 32]
+  // Fetch all announcements from Supabase[cite: 32]
   const { data: announcements, error } = await supabase
     .from("announcements")
     .select("*")
@@ -22,89 +23,141 @@ export default async function AdminAnnouncementsPage() {
     console.error("Error fetching announcements:", error.message);
   }
 
+  // Refined Status Badges for Glass Theme
+  const getStatusBadge = (status: string) => {
+    return status === 'published' 
+      ? <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">Published</Badge>
+      : <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-white/5 text-[#E2D1FE]/60 border-white/10">Draft</Badge>;
+  };
+
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div>
-        <h1 className="font-heading text-3xl font-bold text-primary flex items-center gap-3">
-          <Megaphone className="w-8 h-8 text-accent" />
-          Announcements & Broadcasts
-        </h1>
-        <p className="text-foreground/70 mt-1">Post updates, community news, and alerts for all students.</p>
+    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+      
+      {/* Cinematic Header with Entry Animation */}
+      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+              <Megaphone className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              Announcements & <span className="text-transparent bg-clip-text bg-silver-gradient drop-shadow-md">Broadcasts</span>
+            </div>
+          </h1>
+          <p className="text-[#E2D1FE]/80 mt-4 text-lg font-medium drop-shadow-md max-w-xl">
+            Post system updates, community news, and real-time alerts for all active students.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Create Announcement Form */}
-        <Card className="lg:col-span-1 h-fit">
-          <CardHeader>
-            <CardTitle>Post Announcement</CardTitle>
-            <CardDescription>Broadcast a message to the entire platform.</CardDescription>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        
+        {/* Create Announcement Form - Deep Glass Card */}
+        <Card className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards lg:col-span-1 h-fit bg-black/20 border-white/10 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden flex flex-col">
+          <CardHeader className="bg-black/10 border-b border-white/5 pt-8 px-8 pb-6">
+            <CardTitle className="text-2xl font-bold text-foreground">Post Announcement</CardTitle>
+            <CardDescription className="text-sm font-medium text-[#E2D1FE]/60 mt-1">
+              Broadcast a message to the entire platform.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form action={createAnnouncement} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input id="title" name="title" placeholder="e.g., Weekend Hackathon Live!" required />
+          <CardContent className="pt-8 px-8 pb-8">
+            <form action={createAnnouncement} className="space-y-6">
+              <div className="space-y-2.5">
+                <Label htmlFor="title" className="text-foreground font-bold ml-1">Title</Label>
+                <Input 
+                  id="title" 
+                  name="title" 
+                  placeholder="e.g., Weekend Hackathon Live!" 
+                  required 
+                  className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm"
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="body">Message Body</Label>
-                <Textarea id="body" name="body" placeholder="Write your announcement details here..." rows={4} required />
+              <div className="space-y-2.5">
+                <Label htmlFor="body" className="text-foreground font-bold ml-1">Message Body</Label>
+                <Textarea 
+                  id="body" 
+                  name="body" 
+                  placeholder="Write your announcement details here..." 
+                  rows={4} 
+                  required 
+                  className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl min-h-[120px] backdrop-blur-sm resize-none"
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+              <div className="space-y-2.5">
+                <Label htmlFor="status" className="text-foreground font-bold ml-1">Status</Label>
                 <select 
                   id="status" 
                   name="status" 
-                  className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-12 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent backdrop-blur-sm appearance-none"
                 >
-                  <option value="published">Published (Live)</option>
-                  <option value="draft">Draft (Hidden)</option>
+                  <option value="published" className="bg-[#1a0b2e] text-white">Published (Live)</option>
+                  <option value="draft" className="bg-[#1a0b2e] text-white">Draft (Hidden)</option>
                 </select>
               </div>
 
-              <Button type="submit" className="w-full mt-2 bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button 
+                type="submit" 
+                className="w-full h-12 mt-4 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg"
+              >
                 <Plus className="w-4 h-4 mr-2" /> Broadcast Now
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Existing Announcements Table */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Broadcast History</CardTitle>
+        {/* Existing Announcements Table - 99% Transparent */}
+        <Card className="animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards lg:col-span-2 bg-white/[0.01] border-white/5 backdrop-blur-sm shadow-none rounded-3xl overflow-hidden flex flex-col">
+          <CardHeader className="bg-transparent border-b border-white/5 pt-8 px-8 pb-6">
+            <CardTitle className="text-2xl font-bold text-foreground">Broadcast History</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 p-0">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title & Message</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Date</TableHead>
+              <TableHeader className="bg-transparent border-b border-white/5">
+                <TableRow className="border-none hover:bg-transparent">
+                  <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pl-8 py-4">Title & Message</TableHead>
+                  <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Status</TableHead>
+                  <TableHead className="text-right text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pr-8 py-4">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {announcements && announcements.length > 0 ? (
-                  announcements.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="space-y-1">
-                        <div className="font-medium text-primary text-base">{item.title}</div>
-                        <div className="text-xs text-foreground/60 line-clamp-2">{item.body}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={item.status === 'published' ? 'bg-green-500' : 'bg-gray-500'}>
-                          {item.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-foreground/50">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  announcements.map((item, index) => {
+                    const animationDelay = `${(index + 4) * 100}ms`;
+
+                    return (
+                      <TableRow 
+                        key={item.id}
+                        style={{ animationDelay }}
+                        className="animate-fade-in-up opacity-0 fill-mode-forwards border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                      >
+                        <TableCell className="pl-8 py-4 space-y-1">
+                          <div className="font-bold text-foreground text-base drop-shadow-sm flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                              <Megaphone className="w-4 h-4 text-accent" />
+                            </div>
+                            <span>{item.title}</span>
+                          </div>
+                          <div className="text-xs font-medium text-[#E2D1FE]/60 line-clamp-2 ml-10.5">
+                            {item.body}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          {getStatusBadge(item.status)}
+                        </TableCell>
+                        <TableCell className="text-right pr-8 py-4">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#E2D1FE]/70 bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/5">
+                            <Calendar className="w-3.5 h-3.5 text-accent" />
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center py-8 text-foreground/50">
+                  <TableRow className="border-none hover:bg-transparent">
+                    <TableCell colSpan={3} className="text-center py-20 text-[#E2D1FE]/40 font-medium tracking-wide">
                       No announcements broadcasted yet.
                     </TableCell>
                   </TableRow>
