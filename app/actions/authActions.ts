@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { type RequestInviteInput } from "@/schemas/auth";
 
 /**
@@ -13,6 +14,7 @@ export async function loginUser(formData: FormData) {
 
   const supabase = await createClient();
 
+  // SignIn request to Supabase
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -23,6 +25,9 @@ export async function loginUser(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
+  // Fix: Force Next.js to revalidate the layout so the session state is updated immediately
+  revalidatePath("/", "layout");
+  
   // Login successful hone par dashboard par redirect.
   redirect("/dashboard");
 }
@@ -36,7 +41,8 @@ export async function logout() {
   // Supabase session clear karo.
   await supabase.auth.signOut();
 
-  // User ko login page par redirect karo.
+  // Fix: Clear cache on logout too
+  revalidatePath("/", "layout");
   redirect("/login");
 }
 
@@ -47,29 +53,27 @@ export async function submitInviteRequest(data: RequestInviteInput) {
   try {
     const supabase = await createClient();
 
-    // Note: Agar 'invite_requests' table database me nahi hai, toh abhi ke liye 
-    // real insert ko comment rakha hai taaki error na aaye. 
-    // Sirf success return kar rahe hain jisse UI ka success screen dikhe.
-    
-    /*
     const { error } = await supabase
       .from("invite_requests")
       .insert([
         {
           full_name: data.fullName,
-          email: data.email,
-          portfolio_url: data.portfolioUrl,
+          email: data.email.toLowerCase(),
+          portfolio_url: data.portfolioUrl || null,
           reason: data.reason,
         },
       ]);
 
     if (error) {
       console.error("Supabase invite request error:", error);
+      
+      // Handle unique email constraint error
+      if (error.code === '23505') {
+        return { success: false, error: "An invite request with this email already exists." };
+      }
+      
       return { success: false, error: "Failed to submit request. Please try again." };
     }
-    */
-
-    console.log("Invite request received server-side:", data);
 
     return { success: true };
   } catch (error: any) {

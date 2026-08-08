@@ -1,32 +1,46 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Users, Calendar, Code, Lock } from "lucide-react";
+import { Trophy, Users, Calendar, Code, Lock, ArrowRight } from "lucide-react";
 
 export default async function HackathonsPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged
-  // Fetch real hackathons from Supabase
+  // 1. Safe Auth Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 2. Fetch real hackathons from Supabase
+  // RLS Policy "public view published hackathons" automatically filters drafts
   const { data: hackathons, error } = await supabase
     .from("hackathons")
     .select("*")
-    .neq("status", "draft") // Don't show drafts to students
     .order("starts_at", { ascending: true });
 
   if (error) {
     console.error("Error fetching hackathons:", error.message);
   }
 
+  // 3. Check which hackathons the user has already joined
+  const { data: userTeams } = await supabase
+    .from("hackathon_teams")
+    .select("hackathon_id")
+    .or(`leader_id.eq.${user.id},members.cs.{${user.id}}`);
+
+  const registeredHackathonIds = new Set(userTeams?.map(t => t.hackathon_id) || []);
+
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10 px-4 sm:px-6">
       
       {/* Page Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <Code className="w-7 h-7 text-accent" />
             </div>
             <div>
@@ -43,7 +57,7 @@ export default async function HackathonsPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {hackathons && hackathons.length > 0 ? (
           hackathons.map((hackathon, index) => {
-            // Formatting Date
+            const isRegistered = registeredHackathonIds.has(hackathon.id);
             const startDate = new Date(hackathon.starts_at).toLocaleDateString('en-US', { 
               month: 'short', day: 'numeric', year: 'numeric' 
             });
@@ -56,8 +70,13 @@ export default async function HackathonsPage() {
 
             if (hackathon.status === "open") {
               badgeClass += "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
-              buttonText = "Register Team";
-              buttonStyle = "bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover hover:brightness-110";
+              if (isRegistered) {
+                buttonText = "Go to Workspace";
+                buttonStyle = "bg-white/10 text-foreground border border-white/20 font-bold hover:bg-white/20";
+              } else {
+                buttonText = "Register Team";
+                buttonStyle = "bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover hover:brightness-110";
+              }
             } else if (hackathon.status === "announced") {
               badgeClass += "border-amber-500/30 text-amber-400 bg-amber-500/10";
               buttonText = "Coming Soon";
@@ -84,7 +103,11 @@ export default async function HackathonsPage() {
               <Card 
                 key={hackathon.id} 
                 style={{ animationDelay }}
-                className="animate-fade-in-up opacity-0 fill-mode-forwards bg-black/20 border-white/10 backdrop-blur-xl flex flex-col overflow-hidden transition-all duration-300 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(134,56,205,0.15)] rounded-3xl"
+                className={`animate-fade-in-up opacity-0 fill-mode-forwards backdrop-blur-xl flex flex-col overflow-hidden transition-all duration-300 rounded-3xl ${
+                  isRegistered 
+                  ? "bg-black/40 border-accent/30 shadow-[0_0_20px_rgba(134,56,205,0.1)]" 
+                  : "bg-black/20 border-white/10 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(134,56,205,0.15)]"
+                }`}
               >
                 <CardHeader className="pb-4">
                   <div className="flex justify-between items-start mb-3">
@@ -108,13 +131,13 @@ export default async function HackathonsPage() {
                   {/* Detailed Meta Info Block */}
                   <div className="space-y-3 pt-4 border-t border-white/10">
                     <div className="flex items-center gap-3 text-sm font-medium text-foreground bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner">
-                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0">
                         <Users className="w-4 h-4 text-accent" />
                       </div>
                       <span>{teamText}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm font-medium text-foreground bg-black/40 p-3 rounded-xl border border-white/5 shadow-inner">
-                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0">
                         <Calendar className="w-4 h-4 text-accent" />
                       </div>
                       <span>Starts: {startDate}</span>
@@ -129,6 +152,7 @@ export default async function HackathonsPage() {
                   >
                     {buttonDisabled && <Lock className="w-4 h-4 mr-2 opacity-50" />}
                     {buttonText}
+                    {isRegistered && <ArrowRight className="w-4 h-4 ml-2" />}
                   </Button>
                 </CardFooter>
               </Card>

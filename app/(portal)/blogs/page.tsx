@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,13 @@ import { createClient } from "@/lib/supabase/server";
 export default async function BlogsPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged
-  // Database se posts fetch kar rahe hain, sath mein profiles table se author ka naam (Join)
+  // 1. Safe Auth Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 2. Database se posts fetch kar rahe hain, sath mein profiles table se author ka naam (Join)
   const { data: blogPosts, error } = await supabase
     .from("posts")
     .select(`
@@ -26,17 +32,17 @@ export default async function BlogsPage() {
     .order("published_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching blog posts:", error);
+    console.error("Error fetching blog posts:", error.message);
   }
 
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10 px-4 sm:px-6">
       
       {/* Page Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <Newspaper className="w-7 h-7 text-accent" />
             </div>
             <div>

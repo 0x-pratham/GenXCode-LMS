@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,23 +11,28 @@ import { updateProfile } from "@/app/actions/profileActions";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
+  
+  // 1. Safe Auth Check
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
 
-  // Fetch Profile & League Stats (Backend Logic Untouched)
+  // 2. Fetch Profile & League Stats safely using .maybeSingle() to prevent crashes
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user?.id)
-    .single();
+    .eq("id", user.id)
+    .maybeSingle();
 
   const { data: league } = await supabase
     .from("league_memberships")
     .select("*")
-    .eq("user_id", user?.id)
-    .single();
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const fullName = profile?.full_name || "";
-  const email = profile?.email || "";
+  const email = profile?.email || user.email || ""; // Fallback to auth user email just in case
   const avatarUrl = profile?.avatar_url || "";
   const role = profile?.role || "student";
   
@@ -37,13 +43,13 @@ export default async function ProfilePage() {
   const xpProgress = Math.min((totalXp % 1000) / 10, 100) || 5;
 
   return (
-    <div className="space-y-10 max-w-6xl mx-auto pb-12 relative z-10">
+    <div className="space-y-10 max-w-6xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
       {/* Cinematic Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <User className="w-7 h-7 text-accent" />
             </div>
             <div>

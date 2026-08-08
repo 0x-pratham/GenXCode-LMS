@@ -4,14 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Swords, BookOpen, Video, ArrowRight, Activity, Flame, Terminal, Clock, Megaphone } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  
+  // 1. Safe Auth Check
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
 
-  // Backend Logic Remains Unchanged
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
-  const { data: league } = await supabase.from("league_memberships").select("*").eq("user_id", user?.id).single();
+  // 2. Used .maybeSingle() instead of .single() to prevent crashes if a new user has no profile/league yet
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  const { data: league } = await supabase.from("league_memberships").select("*").eq("user_id", user.id).maybeSingle();
 
   const { data: quests } = await supabase
     .from("daily_challenges")

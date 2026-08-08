@@ -28,12 +28,13 @@ export default async function ChallengesPage() {
   const submittedChallengeIds = new Set(submissions?.map(s => s.challenge_id));
 
   return (
-    <div className="space-y-10 max-w-4xl mx-auto pb-12 relative z-10">
+    // Fixed: Changed to max-w-7xl and added responsive px-4 sm:px-6 for perfect left-right margins
+    <div className="space-y-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
       {/* Page Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10">
         <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+          <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
             <Swords className="w-7 h-7 text-accent" />
           </div>
           <div>
@@ -45,7 +46,8 @@ export default async function ChallengesPage() {
         </p>
       </div>
 
-      <div className="grid gap-8">
+      {/* Fixed: Upgraded to a 2-column grid on large screens to fix awkward stretching */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {challenges && challenges.length > 0 ? (
           challenges.map((challenge, index) => {
             const isCompleted = submittedChallengeIds.has(challenge.id);
@@ -86,14 +88,14 @@ export default async function ChallengesPage() {
                   </CardDescription>
                 </CardHeader>
 
-                <CardContent className="pt-6">
+                <CardContent className="pt-6 flex-1 flex flex-col">
                   {isCompleted ? (
-                    <div className="flex items-center gap-3 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl font-medium text-sm backdrop-blur-md shadow-inner">
-                      <CheckCircle2 className="w-6 h-6 flex-shrink-0" /> 
-                      <span>Solution Submitted Successfully! Waiting for mentor review.</span>
+                    <div className="flex items-center justify-center h-full gap-3 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl font-medium text-sm backdrop-blur-md shadow-inner text-center">
+                      <CheckCircle2 className="w-8 h-8 flex-shrink-0" /> 
+                      <span>Solution Submitted Successfully!<br/>Waiting for mentor review.</span>
                     </div>
                   ) : (
-                    <form action={submitAction} className="space-y-6">
+                    <form action={submitAction} className="space-y-6 flex flex-col flex-1">
                       <div className="space-y-2">
                         <Label htmlFor={`answerUrl-${challenge.id}`} className="text-foreground font-medium ml-1">GitHub / Project URL</Label>
                         <Input 
@@ -105,18 +107,18 @@ export default async function ChallengesPage() {
                           className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm"
                         />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 flex-1">
                         <Label htmlFor={`answerText-${challenge.id}`} className="text-foreground font-medium ml-1">Notes / Explanation (Optional)</Label>
                         <Textarea 
                           id={`answerText-${challenge.id}`} 
                           name="answerText" 
                           placeholder="Explain your approach or highlight key logic..." 
-                          className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl min-h-[100px] backdrop-blur-sm resize-none"
+                          className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl min-h-[120px] h-full backdrop-blur-sm resize-none"
                         />
                       </div>
                       <Button 
                         type="submit" 
-                        className="w-full h-12 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg mt-2"
+                        className="w-full h-12 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg mt-auto"
                       >
                         Submit Solution
                       </Button>
@@ -127,7 +129,7 @@ export default async function ChallengesPage() {
             );
           })
         ) : (
-          <div className="animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards py-20 text-center border border-dashed border-white/20 rounded-3xl bg-black/20 backdrop-blur-md">
+          <div className="lg:col-span-2 animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards py-20 text-center border border-dashed border-white/20 rounded-3xl bg-black/20 backdrop-blur-md">
             <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-5 shadow-inner">
               <Swords className="w-10 h-10 text-[#E2D1FE]/30" />
             </div>

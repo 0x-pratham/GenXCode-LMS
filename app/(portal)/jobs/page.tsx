@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,14 +8,19 @@ import { Briefcase, Building, Calendar, ArrowUpRight, Clock } from "lucide-react
 export default async function JobsPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged
-  // Fetch active hiring campaigns based on schema logic
-  const now = new Date().toISOString();
+  // 1. Safe Auth Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 2. Fetch active hiring campaigns
+  // Schema RLS automatically filters out expired jobs and future jobs.
+  // We just ensure we only show 'published' ones (in case a staff member is viewing the student page).
   const { data: jobs, error } = await supabase
     .from("hiring_campaigns")
     .select("*")
     .eq("status", "published")
-    .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -22,13 +28,13 @@ export default async function JobsPage() {
   }
 
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+    <div className="space-y-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
       {/* Cinematic Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <Briefcase className="w-7 h-7 text-accent" />
             </div>
             <div>
@@ -54,7 +60,7 @@ export default async function JobsPage() {
               >
                 {/* Optional Image Cover Block */}
                 {job.image_url && (
-                  <div className="relative h-40 w-full overflow-hidden border-b border-white/5 bg-black/40">
+                  <div className="relative h-40 w-full overflow-hidden border-b border-white/5 bg-black/40 shrink-0">
                     <img 
                       src={job.image_url} 
                       alt={job.company_name} 
@@ -67,12 +73,12 @@ export default async function JobsPage() {
                 <CardHeader className={`${job.image_url ? 'pt-4' : 'pt-8'} pb-4`}>
                   <div className="flex justify-between items-start mb-4 gap-2">
                     <Badge variant="outline" className="bg-white/5 border-white/10 text-foreground px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur-md">
-                      <Building className="w-3.5 h-3.5 text-accent" />
-                      {job.company_name}
+                      <Building className="w-3.5 h-3.5 text-accent shrink-0" />
+                      <span className="truncate max-w-[120px]">{job.company_name}</span>
                     </Badge>
                     {job.ends_at && (
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded-md flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3 h-3" /> 
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded-md flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                        <Clock className="w-3 h-3 shrink-0" /> 
                         Ends {new Date(job.ends_at).toLocaleDateString()}
                       </span>
                     )}

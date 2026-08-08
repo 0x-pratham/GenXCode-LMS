@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Image as ImageIcon, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -6,8 +7,14 @@ import { createClient } from "@/lib/supabase/server";
 export default async function GalleryPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged
-  // 1. Database se sirf 'published' items fetch kar rahe hain
+  // 1. Safe Auth Check - Protect the route
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 2. Fetch only 'published' gallery items from Database
+  // Your schema RLS 'public view published gallery' also ensures safety here.
   const { data: galleryItems, error } = await supabase
     .from("gallery_items")
     .select("*")
@@ -15,17 +22,17 @@ export default async function GalleryPage() {
     .order("published_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching gallery items:", error);
+    console.error("Error fetching gallery items:", error.message);
   }
 
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+    <div className="space-y-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
       {/* Cinematic Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <ImageIcon className="w-7 h-7 text-accent" />
             </div>
             <div>
@@ -41,10 +48,13 @@ export default async function GalleryPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {galleryItems && galleryItems.length > 0 ? (
           galleryItems.map((item, index) => {
-            // 2. Image URL logic Remains Unchanged
-            const imageUrl = item.image_path?.startsWith("http")
-              ? item.image_path
-              : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/gallery/${item.image_path}`;
+            
+            // 3. Upgraded Storage URL Logic using Supabase Storage API
+            let imageUrl = item.image_path;
+            if (item.image_path && !item.image_path.startsWith("http")) {
+              const { data } = supabase.storage.from("gallery").getPublicUrl(item.image_path);
+              imageUrl = data.publicUrl;
+            }
 
             const animationDelay = `${(index + 2) * 150}ms`;
 
@@ -56,7 +66,7 @@ export default async function GalleryPage() {
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden">
                   <Image
-                    src={imageUrl}
+                    src={imageUrl || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop"} // Added ultimate fallback just in case
                     alt={item.alt_text || item.title}
                     fill
                     className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-90"
@@ -73,7 +83,7 @@ export default async function GalleryPage() {
                   {/* Content block with slight upward slide on hover */}
                   <div className="absolute bottom-5 left-5 right-5 translate-y-2 transition-transform duration-500 group-hover:translate-y-0">
                     <h3 className="font-heading text-xl sm:text-2xl font-bold text-white flex items-center gap-2 drop-shadow-md mb-2 leading-tight">
-                      {item.title} <Sparkles className="w-5 h-5 text-accent drop-shadow-sm" />
+                      {item.title} <Sparkles className="w-5 h-5 text-accent drop-shadow-sm shrink-0" />
                     </h3>
                     <p className="text-sm text-[#E2D1FE]/80 line-clamp-2 drop-shadow-sm font-medium leading-relaxed">
                       {item.caption}

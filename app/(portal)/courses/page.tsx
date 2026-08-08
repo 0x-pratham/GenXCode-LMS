@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +9,15 @@ import { BookOpen, Lock } from "lucide-react";
 export default async function CoursesPage() {
   const supabase = await createClient();
   
-  // Backend Logic Remains Unchanged
-  // Fetch real courses from Supabase (Only published ones, or all if you want to see drafts too)
+  // 1. Safe Auth Check (Backend Upgrade)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 2. Fetch courses from Supabase
+  // Note: Your RLS policy "members view accessible courses" automatically filters this!
+  // Students only see published courses meant for their cohort. Staff sees all.
   const { data: courses, error } = await supabase
     .from("courses")
     .select("*")

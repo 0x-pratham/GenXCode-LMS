@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Flame, Crown, Medal } from "lucide-react";
@@ -6,7 +7,13 @@ import { Trophy, Flame, Crown, Medal } from "lucide-react";
 export default async function LeaderboardPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged
+  // 1. Safe Auth Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 2. Backend Logic Remains Unchanged (Fetch Profiles & XP)
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select(`
@@ -39,13 +46,14 @@ export default async function LeaderboardPage() {
   }).sort((a, b) => b.xp_total - a.xp_total) || [];
 
   return (
-    <div className="space-y-10 max-w-5xl mx-auto pb-12 relative z-10">
+    // FIXED: Changed to max-w-7xl and added responsive px-4 sm:px-6 for perfect margins
+    <div className="space-y-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
       {/* Cinematic Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <Trophy className="w-7 h-7 text-accent" />
             </div>
             <div>
@@ -62,9 +70,9 @@ export default async function LeaderboardPage() {
         {/* Table Header (Visually distinct from rows) */}
         <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards hidden md:flex items-center px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#E2D1FE]/50 mb-3 border-b border-white/5">
           <div className="w-20 text-center">Rank</div>
-          <div className="flex-1">Developer</div>
+          <div className="flex-1 pl-4">Developer</div>
           <div className="w-40 text-center">League</div>
-          <div className="w-32 text-right">Total XP</div>
+          <div className="w-32 text-right pr-2">Total XP</div>
         </div>
 
         {/* Leaderboard Rows */}
@@ -101,12 +109,12 @@ export default async function LeaderboardPage() {
                   className={`animate-fade-in-up opacity-0 fill-mode-forwards flex flex-col md:flex-row items-center p-4 md:px-6 md:py-4 rounded-2xl border backdrop-blur-xl transition-all duration-300 group ${rowBaseClass}`}
                 >
                   {/* Rank */}
-                  <div className="w-full md:w-20 flex justify-center mb-3 md:mb-0">
+                  <div className="w-full md:w-20 flex justify-center mb-3 md:mb-0 shrink-0">
                     {rankElement}
                   </div>
                   
                   {/* Developer Profile */}
-                  <div className="flex-1 flex items-center gap-4 w-full justify-center md:justify-start mb-4 md:mb-0">
+                  <div className="flex-1 flex items-center gap-4 w-full justify-center md:justify-start mb-4 md:mb-0 pl-0 md:pl-4">
                     <Avatar className={`w-12 h-12 border-2 ${isFirst ? 'border-yellow-400/50' : isSecond ? 'border-slate-300/50' : isThird ? 'border-amber-500/50' : 'border-white/10 shadow-inner'}`}>
                       <AvatarImage src={item.avatar_url || ""} />
                       <AvatarFallback className="bg-white/5 text-foreground font-bold">
@@ -114,13 +122,13 @@ export default async function LeaderboardPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="text-center md:text-left">
-                      <div className="font-bold text-foreground text-lg">{item.full_name}</div>
-                      <div className="text-xs font-medium text-[#E2D1FE]/50">{item.email}</div>
+                      <div className="font-bold text-foreground text-lg truncate max-w-[200px] sm:max-w-xs">{item.full_name}</div>
+                      <div className="text-xs font-medium text-[#E2D1FE]/50 truncate max-w-[200px] sm:max-w-xs">{item.email}</div>
                     </div>
                   </div>
                   
                   {/* League Badge */}
-                  <div className="w-full md:w-40 flex justify-center mb-4 md:mb-0">
+                  <div className="w-full md:w-40 flex justify-center mb-4 md:mb-0 shrink-0">
                     <Badge variant="outline" className={`capitalize px-3 py-1 font-bold ${
                       isFirst ? 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10' : 
                       isSecond ? 'border-slate-400/40 text-slate-300 bg-slate-400/10' : 
@@ -132,7 +140,7 @@ export default async function LeaderboardPage() {
                   </div>
                   
                   {/* Total XP */}
-                  <div className="w-full md:w-32 flex justify-center md:justify-end">
+                  <div className="w-full md:w-32 flex justify-center md:justify-end shrink-0 pr-0 md:pr-2">
                     <span className={`inline-flex items-center gap-1.5 font-heading text-xl font-bold ${
                       isFirst ? 'text-yellow-400' : 
                       isSecond ? 'text-slate-300' : 
