@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -9,15 +11,31 @@ import { Users, MailPlus, ShieldAlert, MoreVertical } from "lucide-react";
 export default async function AdminUsersPage() {
   const supabase = await createClient();
   
-  // Backend Logic Remains Unchanged
-  // Fetch all user profiles from the database
+  // 1. Safe Auth & Strict Admin Role Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: currentUserProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  // Redirect unauthorized users back to the student portal
+  if (!currentUserProfile || (currentUserProfile.role !== "admin" && currentUserProfile.role !== "super_admin")) {
+    redirect("/dashboard");
+  }
+
+  // 2. Fetch all user profiles from the database
   const { data: users, error } = await supabase
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching users:", error);
+    console.error("Error fetching users:", error.message);
   }
 
   return (
@@ -27,7 +45,7 @@ export default async function AdminUsersPage() {
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
               <Users className="w-7 h-7 text-accent" />
             </div>
             <div>
@@ -38,8 +56,11 @@ export default async function AdminUsersPage() {
             Manage student access, assign administrative roles, and generate platform invitations.
           </p>
         </div>
-        <Button className="h-12 px-6 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg shrink-0">
-          <MailPlus className="w-4 h-4 mr-2" /> Generate Invite Link
+        {/* Made button functional by wrapping with Link */}
+        <Button className="h-12 px-6 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg shrink-0" asChild>
+          <Link href="/admin/invitations">
+            <MailPlus className="w-4 h-4 mr-2" /> Generate Invite Link
+          </Link>
         </Button>
       </div>
 
@@ -125,8 +146,11 @@ export default async function AdminUsersPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right pr-8 py-4">
-                        <Button variant="ghost" size="icon" className="text-[#E2D1FE]/50 hover:text-foreground hover:bg-white/10 rounded-xl transition-all">
-                          <MoreVertical className="w-5 h-5" />
+                        {/* Made action button functional to navigate to specific user details */}
+                        <Button variant="ghost" size="icon" className="text-[#E2D1FE]/50 hover:text-foreground hover:bg-white/10 rounded-xl transition-all" asChild>
+                          <Link href={`/admin/users/${user.id}`}>
+                            <MoreVertical className="w-5 h-5" />
+                          </Link>
                         </Button>
                       </TableCell>
                     </TableRow>

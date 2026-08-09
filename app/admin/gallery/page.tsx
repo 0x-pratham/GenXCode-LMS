@@ -1,36 +1,140 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, Plus, Edit, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ImageIcon, Plus, Trash2, RefreshCw } from "lucide-react";
 
 export default async function GalleryAdminPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged[cite: 30]
+  // 1. Safe Auth & Strict Admin Role Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: adminProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!adminProfile || (adminProfile.role !== "admin" && adminProfile.role !== "super_admin")) {
+    redirect("/dashboard");
+  }
+
+  // 2. Fetch gallery items with author profiles (Join based on created_by)
   const { data: galleryItems, error } = await supabase
     .from("gallery_items")
     .select(`
       *,
-      author:profiles ( full_name )
+      author:profiles!gallery_items_created_by_fkey(full_name)
     `)
     .order("created_at", { ascending: false });
 
-  if (error) console.error("Error fetching gallery:", error);
+  if (error) console.error("Error fetching gallery:", error.message);
 
-  // Refined Status Badges for Glass Theme
+  // 3. Server Action to Create a Gallery Item
+  async function handleCreateGalleryItem(formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const { data: { user: currentUser } } = await supabaseServer.auth.getUser();
+    if (!currentUser) throw new Error("Unauthorized");
+
+    const title = formData.get("title") as string;
+    const caption = formData.get("caption") as string;
+    const imageUrl = formData.get("imageUrl") as string;
+    const altText = formData.get("altText") as string || title;
+    const status = (formData.get("status") as "draft" | "published" | "archived") || "draft";
+
+    const { error: insertError } = await supabaseServer
+      .from("gallery_items")
+      .insert([
+        {
+          title,
+          image_path: imageUrl, // Storing external URL or storage path
+          alt_text: altText,
+          caption,
+          status,
+          published_at: status === "published" ? new Date().toISOString() : null,
+          created_by: currentUser.id
+        }
+      ]);
+
+    if (insertError) {
+      console.error("Failed to add gallery item:", insertError.message);
+      return;
+    }
+
+    revalidatePath("/admin/gallery");
+  }
+
+  // 4. Server Action to Rotate Status
+  async function handleRotateStatus(formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const itemId = formData.get("itemId") as string;
+    const currentStatus = formData.get("currentStatus") as string;
+
+    let newStatus: "draft" | "published" | "archived" = "draft";
+    if (currentStatus === "draft") newStatus = "published";
+    else if (currentStatus === "published") newStatus = "archived";
+    else if (currentStatus === "archived") newStatus = "draft";
+
+    const { error: updateError } = await supabaseServer
+      .from("gallery_items")
+      .update({ 
+        status: newStatus,
+        published_at: newStatus === "published" ? new Date().toISOString() : null
+      })
+      .eq("id", itemId);
+
+    if (updateError) {
+      console.error("Failed to update status:", updateError.message);
+      return;
+    }
+
+    revalidatePath("/admin/gallery");
+  }
+
+  // 5. Server Action to Delete an Item
+  async function handleDeleteGalleryItem(formData: FormData) {
+    "use server";
+    const supabaseServer = await createClient();
+    const itemId = formData.get("itemId") as string;
+
+    const { error: deleteError } = await supabaseServer
+      .from("gallery_items")
+      .delete()
+      .eq("id", itemId);
+
+    if (deleteError) {
+      console.error("Failed to delete gallery item:", deleteError.message);
+      return;
+    }
+
+    revalidatePath("/admin/gallery");
+  }
+
   const getStatusBadge = (status: string) => {
-    return status === 'published' 
-      ? <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">Published</Badge>
-      : <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-white/5 text-[#E2D1FE]/60 border-white/10">Draft</Badge>;
+    switch (status) {
+      case 'published':
+        return <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)]">Published</Badge>;
+      case 'draft':
+        return <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-white/5 text-[#E2D1FE]/60 border-white/10">Draft</Badge>;
+      default:
+        return <Badge variant="outline" className="capitalize px-3 py-1 font-bold backdrop-blur-md border bg-red-500/10 text-red-400 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]">Archived</Badge>;
+    }
   };
 
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
+    <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10 px-4 sm:px-6">
       
-      {/* Cinematic Header with Entry Animation */}
+      {/* Cinematic Header */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
@@ -45,84 +149,165 @@ export default async function GalleryAdminPage() {
             Upload, monitor, and manage community memories and event photographs.
           </p>
         </div>
-        <Button className="h-12 px-6 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg shrink-0">
-          <Plus className="w-4 h-4 mr-2" /> Upload Image
-        </Button>
       </div>
 
-      {/* Media Library Table Card - 99% Transparent */}
-      <Card className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards bg-white/[0.01] border-white/5 backdrop-blur-sm shadow-none rounded-3xl overflow-hidden flex flex-col">
-        <CardHeader className="bg-transparent border-b border-white/5 pt-8 px-8 pb-6">
-          <CardTitle className="text-2xl font-bold text-foreground">Media Library</CardTitle>
-          <CardDescription className="text-sm font-medium text-[#E2D1FE]/60 mt-1">
-            All uploaded images visible on the public community gallery.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 p-0">
-          <Table>
-            <TableHeader className="bg-transparent border-b border-white/5">
-              <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pl-8 py-4 w-28">Preview</TableHead>
-                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Title</TableHead>
-                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Status</TableHead>
-                <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Uploaded By</TableHead>
-                <TableHead className="text-right text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pr-8 py-4">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {galleryItems && galleryItems.length > 0 ? (
-                galleryItems.map((item, index) => {
-                  const uploader = Array.isArray(item.author) ? item.author[0]?.full_name : item.author?.full_name;
-                  const imageUrl = item.image_path?.startsWith("http")
-                    ? item.image_path
-                    : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/gallery/${item.image_path}`;
-                  const animationDelay = `${(index + 3) * 100}ms`;
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+        
+        {/* Upload Form Card */}
+        <Card className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards xl:col-span-1 h-fit bg-black/20 border-white/10 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden flex flex-col sticky top-24">
+          <CardHeader className="bg-black/10 border-b border-white/5 pt-8 px-8 pb-6">
+            <CardTitle className="text-2xl font-bold text-foreground">Add New Image</CardTitle>
+            <CardDescription className="text-sm font-medium text-[#E2D1FE]/60 mt-1">
+              Add a new photograph to the community gallery.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-8 px-8 pb-8">
+            <form action={handleCreateGalleryItem} className="space-y-6">
+              
+              <div className="space-y-2.5">
+                <Label htmlFor="title" className="text-foreground font-bold ml-1">Image Title</Label>
+                <Input 
+                  id="title" 
+                  name="title" 
+                  placeholder="e.g., Hackathon 2026 Winners" 
+                  required 
+                  className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm"
+                />
+              </div>
 
-                  return (
-                    <TableRow 
-                      key={item.id}
-                      style={{ animationDelay }}
-                      className="animate-fade-in-up opacity-0 fill-mode-forwards border-b border-white/5 hover:bg-white/[0.02] transition-colors"
-                    >
-                      <TableCell className="pl-8 py-4">
-                        <div className="relative w-16 h-12 rounded-xl overflow-hidden bg-black/40 border border-white/10 shadow-inner">
-                          <Image src={imageUrl} alt={item.alt_text || "Preview"} fill className="object-cover opacity-90" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <div className="font-bold text-foreground drop-shadow-sm">{item.title}</div>
-                        <div className="text-xs font-medium text-[#E2D1FE]/50 line-clamp-1 mt-0.5">{item.caption}</div>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        {getStatusBadge(item.status)}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm font-semibold text-[#E2D1FE]/80">
-                        {uploader || "System"}
-                      </TableCell>
-                      <TableCell className="text-right pr-8 py-4">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-[#E2D1FE]/70 hover:text-white hover:bg-white/10 rounded-xl transition-all">
-                            <Edit className="w-4 h-4 text-accent" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
+              <div className="space-y-2.5">
+                <Label htmlFor="imageUrl" className="text-foreground font-bold ml-1">Image URL</Label>
+                <Input 
+                  id="imageUrl" 
+                  name="imageUrl" 
+                  type="url"
+                  placeholder="https://images.unsplash.com/..." 
+                  required
+                  className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm"
+                />
+              </div>
+
+              <div className="space-y-2.5">
+                <Label htmlFor="caption" className="text-foreground font-bold ml-1">Caption (Optional)</Label>
+                <Textarea 
+                  id="caption" 
+                  name="caption" 
+                  placeholder="A short description of the moment..." 
+                  className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl min-h-[100px] backdrop-blur-sm resize-none"
+                />
+              </div>
+
+              <div className="space-y-2.5">
+                <Label htmlFor="status" className="text-foreground font-bold ml-1">Visibility Status</Label>
+                <div className="relative">
+                  <select 
+                    id="status" 
+                    name="status" 
+                    defaultValue="draft"
+                    className="flex h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent backdrop-blur-sm appearance-none cursor-pointer"
+                  >
+                    <option value="draft" className="bg-gray-900 text-white">Draft (Hidden)</option>
+                    <option value="published" className="bg-gray-900 text-emerald-400">Published (Live)</option>
+                    <option value="archived" className="bg-gray-900 text-red-400">Archived</option>
+                  </select>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 mt-4 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" /> Add to Gallery
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Media Library Table Card */}
+        <Card className="animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards xl:col-span-2 bg-white/[0.01] border-white/5 backdrop-blur-sm shadow-none rounded-3xl overflow-hidden flex flex-col">
+          <CardHeader className="bg-transparent border-b border-white/5 pt-8 px-8 pb-6">
+            <CardTitle className="text-2xl font-bold text-foreground">Media Library</CardTitle>
+            <CardDescription className="text-sm font-medium text-[#E2D1FE]/60 mt-1">
+              All uploaded images visible on the public community gallery.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 p-0 overflow-x-auto">
+            <Table className="min-w-[700px]">
+              <TableHeader className="bg-transparent border-b border-white/5">
                 <TableRow className="border-none hover:bg-transparent">
-                  <TableCell colSpan={5} className="text-center py-20 text-[#E2D1FE]/40 font-medium tracking-wide">
-                    No images in the gallery yet.
-                  </TableCell>
+                  <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pl-8 py-4 w-28">Preview</TableHead>
+                  <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Title</TableHead>
+                  <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Status</TableHead>
+                  <TableHead className="text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs py-4">Uploaded By</TableHead>
+                  <TableHead className="text-right text-[#E2D1FE]/50 font-bold uppercase tracking-wider text-xs pr-8 py-4">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {galleryItems && galleryItems.length > 0 ? (
+                  galleryItems.map((item, index) => {
+                    const uploaderObj = Array.isArray(item.author) ? item.author[0] : item.author;
+                    const uploader = uploaderObj?.full_name;
+                    
+                    // Native HTML img to prevent Next.js host crashes
+                    const imageUrl = item.image_path?.startsWith("http")
+                      ? item.image_path
+                      : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/gallery/${item.image_path}`;
+                    
+                    const animationDelay = `${(index + 3) * 100}ms`;
+
+                    return (
+                      <TableRow 
+                        key={item.id}
+                        style={{ animationDelay }}
+                        className="animate-fade-in-up opacity-0 fill-mode-forwards border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+                      >
+                        <TableCell className="pl-8 py-4 align-top">
+                          <div className="relative w-20 h-14 rounded-xl overflow-hidden bg-black/40 border border-white/10 shadow-inner">
+                            <img src={imageUrl} alt={item.alt_text || "Preview"} className="w-full h-full object-cover opacity-90" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 align-top">
+                          <div className="font-bold text-foreground drop-shadow-sm">{item.title}</div>
+                          <div className="text-xs font-medium text-[#E2D1FE]/50 line-clamp-2 mt-1 max-w-[200px]">{item.caption || "No caption"}</div>
+                        </TableCell>
+                        <TableCell className="py-4 align-top">
+                          {getStatusBadge(item.status)}
+                        </TableCell>
+                        <TableCell className="py-4 text-sm font-semibold text-[#E2D1FE]/80 align-top">
+                          {uploader || "Admin"}
+                        </TableCell>
+                        <TableCell className="text-right pr-8 py-4 align-top">
+                          <div className="flex justify-end gap-2 mt-1">
+                            <form action={handleRotateStatus}>
+                              <input type="hidden" name="itemId" value={item.id} />
+                              <input type="hidden" name="currentStatus" value={item.status} />
+                              <Button variant="ghost" size="sm" type="submit" className="h-9 px-3 text-[#E2D1FE]/70 hover:text-white hover:bg-white/10 rounded-xl transition-all font-bold" title="Click to rotate status">
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </Button>
+                            </form>
+                            <form action={handleDeleteGalleryItem}>
+                              <input type="hidden" name="itemId" value={item.id} />
+                              <Button variant="ghost" size="sm" type="submit" className="h-9 px-3 text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all font-bold">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </form>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow className="border-none hover:bg-transparent">
+                    <TableCell colSpan={5} className="text-center py-20 text-[#E2D1FE]/40 font-medium tracking-wide">
+                      No images in the gallery yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

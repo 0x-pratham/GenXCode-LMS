@@ -1,63 +1,63 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Mailbox, Activity, Code2, ArrowRight, Megaphone, Swords, ShieldAlert } from "lucide-react";
+import { Users, Mailbox, Activity, ArrowRight, Megaphone, Swords, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
-  // Backend Logic Remains Unchanged
-  // 1. Fetch Total Students Count
-  const { count: studentCount, error: studentError } = await supabase
-    .from("profiles")
-    .select("*", { count: 'exact', head: true })
-    .eq("role", "student");
-
-  // 2. Fetch Active Courses Count
-  const { count: courseCount, error: courseError } = await supabase
-    .from("courses")
-    .select("*", { count: 'exact', head: true })
-    .eq("status", "published");
-
-  // 3. Fetch Active Quests (Challenges) Count
-  const { count: questCount, error: questError } = await supabase
-    .from("daily_challenges")
-    .select("*", { count: 'exact', head: true })
-    .eq("status", "published");
-
-  // 4. Fetch Pending Invitations Count
-  const { count: inviteCount, error: inviteError } = await supabase
-    .from("invitations")
-    .select("*", { count: 'exact', head: true })
-    .eq("status", "sent");
-
-  if (studentError || courseError || questError || inviteError) {
-    console.error("Admin Dashboard Fetch Errors:", { studentError, courseError, questError, inviteError });
+  // Safe Auth & Strict Admin Role Check
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
   }
 
-  // 5. Fetch 5 Most Recent Users for the table
-  const { data: recentUsers } = await supabase
+  const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(5);
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || (profile.role !== "admin" && profile.role !== "super_admin")) {
+    redirect("/dashboard");
+  }
+
+  // FIXED: High-Performance Concurrent Data Fetching
+  // Now querying `invite_requests` for pending count instead of manual invitations
+  const [
+    { count: studentCount, error: studentError },
+    { count: courseCount, error: courseError },
+    { count: questCount, error: questError },
+    { count: pendingRequestsCount, error: requestsError },
+    { data: recentUsers, error: recentUsersError }
+  ] = await Promise.all([
+    supabase.from("profiles").select("*", { count: 'exact', head: true }).eq("role", "student"),
+    supabase.from("courses").select("*", { count: 'exact', head: true }).eq("status", "published"),
+    supabase.from("daily_challenges").select("*", { count: 'exact', head: true }).eq("status", "published"),
+    supabase.from("invite_requests").select("*", { count: 'exact', head: true }).eq("status", "pending"), // Correct Table
+    supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(5)
+  ]);
+
+  if (studentError || courseError || questError || requestsError || recentUsersError) {
+    console.error("Admin Dashboard Fetch Errors:", { studentError, courseError, questError, requestsError, recentUsersError });
+  }
 
   // Dynamic KPIs Array
   const KPIS = [
     { title: "Total Students", value: studentCount || 0, change: "Registered users", icon: Users },
     { title: "Active Quests", value: questCount || 0, change: "Currently published", icon: Swords },
     { title: "Published Courses", value: courseCount || 0, change: "Available to learn", icon: Activity },
-    { title: "Pending Invites", value: inviteCount || 0, change: "Awaiting acceptance", icon: Mailbox },
+    { title: "Pending Invites", value: pendingRequestsCount || 0, change: "Applications awaiting review", icon: Mailbox },
   ];
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-12 relative z-10">
       
-      {/* Cinematic Header with Entry Animation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
@@ -74,7 +74,6 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {KPIS.map((kpi, i) => {
           const Icon = kpi.icon;
@@ -103,10 +102,7 @@ export default async function AdminDashboardPage() {
         })}
       </div>
 
-      {/* Recent Activity & Quick Actions */}
       <div className="grid gap-8 lg:grid-cols-2">
-        
-        {/* Recent Users Table */}
         <Card className="animate-fade-in-up [animation-delay:600ms] opacity-0 fill-mode-forwards flex flex-col bg-black/20 border-white/10 backdrop-blur-xl shadow-2xl rounded-3xl overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between bg-black/10 border-b border-white/5 pt-8 px-8 pb-6">
             <div>
@@ -174,7 +170,6 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
         <Card className="animate-fade-in-up [animation-delay:700ms] opacity-0 fill-mode-forwards bg-black/20 border-white/10 backdrop-blur-xl shadow-2xl rounded-3xl h-fit">
           <CardHeader className="bg-black/10 border-b border-white/5 pt-8 px-8 pb-6">
             <CardTitle className="text-2xl font-bold text-foreground">Quick Actions</CardTitle>
@@ -192,14 +187,16 @@ export default async function AdminDashboardPage() {
               </Link>
             </Button>
             
-            <Button variant="outline" className="w-full justify-start h-20 px-6 bg-black/40 border-white/5 hover:bg-white/[0.04] hover:border-[#E2D1FE]/40 hover:text-foreground transition-all duration-300 rounded-2xl group shadow-inner">
-              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
-                <Megaphone className="w-5 h-5 text-[#E2D1FE]" />
-              </div>
-              <div className="text-left">
-                <div className="font-bold text-base text-foreground drop-shadow-sm">Post Announcement</div>
-                <div className="text-xs font-medium text-[#E2D1FE]/50 mt-0.5">Notify all active cohorts</div>
-              </div>
+            <Button variant="outline" className="w-full justify-start h-20 px-6 bg-black/40 border-white/5 hover:bg-white/[0.04] hover:border-[#E2D1FE]/40 hover:text-foreground transition-all duration-300 rounded-2xl group shadow-inner" asChild>
+              <Link href="/admin/announcements">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+                  <Megaphone className="w-5 h-5 text-[#E2D1FE]" />
+                </div>
+                <div className="text-left">
+                  <div className="font-bold text-base text-foreground drop-shadow-sm">Post Announcement</div>
+                  <div className="text-xs font-medium text-[#E2D1FE]/50 mt-0.5">Notify all active cohorts</div>
+                </div>
+              </Link>
             </Button>
             
             <Button variant="outline" className="w-full justify-start h-20 px-6 bg-black/40 border-white/5 hover:bg-white/[0.04] hover:border-emerald-500/40 hover:text-foreground transition-all duration-300 rounded-2xl group shadow-inner" asChild>

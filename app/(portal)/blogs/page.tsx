@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +15,7 @@ export default async function BlogsPage() {
     redirect("/login");
   }
 
-  // 2. Database se posts fetch kar rahe hain, sath mein profiles table se author ka naam (Join)
+  // 2. Fetch posts with author full_name AND avatar_url (Join)
   const { data: blogPosts, error } = await supabase
     .from("posts")
     .select(`
@@ -26,7 +25,7 @@ export default async function BlogsPage() {
       excerpt,
       cover_url,
       published_at,
-      author:profiles ( full_name )
+      author:profiles ( full_name, avatar_url )
     `)
     .eq("status", "published")
     .order("published_at", { ascending: false });
@@ -66,10 +65,10 @@ export default async function BlogsPage() {
               year: "numeric",
             });
 
-            // Author name fallback
-            const authorName = Array.isArray(post.author) 
-              ? post.author[0]?.full_name 
-              : post.author?.full_name || "Admin Team";
+            // Author data fallback
+            const authorData = Array.isArray(post.author) ? post.author[0] : post.author;
+            const authorName = authorData?.full_name || "Admin Team";
+            const authorAvatar = authorData?.avatar_url || ""; 
 
             const animationDelay = `${(index + 2) * 150}ms`;
 
@@ -79,13 +78,12 @@ export default async function BlogsPage() {
                 style={{ animationDelay }}
                 className="animate-fade-in-up opacity-0 fill-mode-forwards bg-black/20 border-white/10 backdrop-blur-xl flex flex-col overflow-hidden transition-all duration-300 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-[0_8px_32px_rgba(134,56,205,0.15)] rounded-3xl"
               >
-                {/* Cover Image Block */}
+                {/* Fixed Image Tag: Next.js Runtime Crash Solved */}
                 <div className="relative h-52 w-full overflow-hidden border-b border-white/5">
-                  <Image
-                    src={post.cover_url || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop"} // Fallback image if null
+                  <img
+                    src={post.cover_url || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop"} 
                     alt={post.title}
-                    fill
-                    className="object-cover transition-transform duration-700 hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
                   />
                   {/* Subtle dark gradient to blend image into the card */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
@@ -115,8 +113,18 @@ export default async function BlogsPage() {
                 </CardContent>
                 
                 <CardFooter className="pt-5 pb-5 px-6 bg-black/40 border-t border-white/5 mt-auto flex items-center justify-between">
-                  <div className="text-sm font-semibold text-[#E2D1FE] bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 shadow-inner">
-                    By {authorName}
+                  {/* Author Identity Block with Avatar */}
+                  <div className="flex items-center gap-2.5 bg-white/5 pl-1.5 pr-3 py-1.5 rounded-full border border-white/5 shadow-inner max-w-[55%]">
+                    {authorAvatar ? (
+                       <img src={authorAvatar} alt={authorName} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0 border border-accent/30 text-[10px] font-bold text-accent">
+                        {authorName.charAt(0)}
+                      </div>
+                    )}
+                    <span className="text-xs font-semibold text-[#E2D1FE] truncate">
+                      {authorName}
+                    </span>
                   </div>
                   <Link href={`/blogs/${post.slug}`}>
                     <Button variant="ghost" className="text-foreground hover:bg-white/10 hover:text-white rounded-xl font-bold transition-all group px-4">

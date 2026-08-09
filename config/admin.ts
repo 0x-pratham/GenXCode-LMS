@@ -1,7 +1,7 @@
 import { 
   LayoutDashboard, Users, MailOpen, BookOpen, Swords, HelpCircle, 
   Radio, ClipboardCheck, Trophy, Code2, Newspaper, ImageIcon, 
-  Briefcase, Megaphone, LineChart, Settings, ScrollText 
+  Briefcase, Megaphone, LineChart, Settings, ScrollText, FileCheck 
 } from 'lucide-react';
 
 export const adminNavGroups = [
@@ -23,6 +23,7 @@ export const adminNavGroups = [
     items: [
       { title: 'Courses', href: '/admin/courses', icon: BookOpen },
       { title: 'Challenges', href: '/admin/challenges', icon: Swords },
+      { title: 'Submissions', href: '/admin/submissions', icon: FileCheck }, // Added Submissions here!
       { title: 'Quizzes', href: '/admin/quizzes', icon: HelpCircle },
     ]
   },

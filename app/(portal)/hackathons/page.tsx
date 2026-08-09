@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link"; // IMPORTED LINK COMPONENT
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,14 +147,19 @@ export default async function HackathonsPage() {
                 </CardContent>
                 
                 <CardFooter className="pt-2 pb-6 px-6">
-                  <Button
-                    className={`w-full h-12 rounded-xl transition-all shadow-md ${buttonStyle}`}
-                    disabled={buttonDisabled}
-                  >
-                    {buttonDisabled && <Lock className="w-4 h-4 mr-2 opacity-50" />}
-                    {buttonText}
-                    {isRegistered && <ArrowRight className="w-4 h-4 ml-2" />}
-                  </Button>
+                  {hackathon.status === "open" && !isRegistered ? (
+                    <Button className={`w-full h-12 rounded-xl transition-all shadow-md ${buttonStyle}`} asChild>
+                      <Link href={`/hackathons/${hackathon.slug}/register`}>
+                        {buttonText} <ArrowRight className="w-4 h-4 ml-2" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button className={`w-full h-12 rounded-xl transition-all shadow-md ${buttonStyle}`} disabled={buttonDisabled}>
+                      {buttonDisabled && <Lock className="w-4 h-4 mr-2 opacity-50" />}
+                      {buttonText}
+                      {isRegistered && <ArrowRight className="w-4 h-4 ml-2" />}
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             );
