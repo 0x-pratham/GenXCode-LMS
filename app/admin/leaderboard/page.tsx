@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,32 +27,50 @@ export default async function LeaderboardAdminPage() {
     redirect("/dashboard");
   }
 
-  // 2. Fetch necessary data (Rankings, Students, Active Season)
-  const [
-    { data: rankings, error: rankingsError },
-    { data: students, error: studentsError },
-    { data: activeSeason }
-  ] = await Promise.all([
-    supabase
-      .from("league_memberships")
-      .select(`*, season:leaderboard_seasons ( name, is_active ), user:profiles ( full_name, email )`)
-      .order("xp_total", { ascending: false })
-      .limit(50),
-    supabase
-      .from("profiles")
-      .select("id, full_name, email")
-      .eq("role", "student")
-      .order("full_name", { ascending: true }),
-    supabase
-      .from("leaderboard_seasons")
-      .select("id, name")
-      .eq("is_active", true)
-      .maybeSingle()
+  // 2. Fetch active season
+  const { data: activeSeason } = await supabase
+    .from("leaderboard_seasons")
+    .select("id, name")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  // 3. Fetch all active student profiles and all xp_events to compute accurate total XP dynamically
+  const [{ data: profiles }, { data: xpEvents }, { data: memberships }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, email, role").eq("is_active", true),
+    supabase.from("xp_events").select("user_id, amount"),
+    supabase.from("league_memberships").select("user_id, league")
   ]);
 
-  if (rankingsError) console.error("Error fetching rankings:", rankingsError.message);
+  // Calculate total XP per user from xp_events table for absolute reliability
+  const xpMap = new Map<string, number>();
+  xpEvents?.forEach(ev => {
+    const current = xpMap.get(ev.user_id) || 0;
+    xpMap.set(ev.user_id, current + Number(ev.amount));
+  });
 
-  // 3. Server Action for Manual XP Assignment
+  // Map memberships for league badges
+  const leagueMap = new Map<string, string>();
+  memberships?.forEach(m => {
+    leagueMap.set(m.user_id, m.league);
+  });
+
+  // Combine and sort rankings descending by total XP
+  const rankings = profiles?.map(profile => {
+    const totalXp = xpMap.get(profile.id) || 0;
+    const league = leagueMap.get(profile.id) || "code_starter";
+    return {
+      id: profile.id,
+      user_id: profile.id,
+      user: { full_name: profile.full_name, email: profile.email },
+      league: league,
+      xp_total: totalXp,
+    };
+  }).sort((a, b) => b.xp_total - a.xp_total) || [];
+
+  // Filter students dropdown list for manual XP assignment
+  const students = profiles?.filter(p => p.role === 'student' || p.role === 'mentor') || [];
+
+  // 4. Server Action for Manual XP Assignment (Using Admin Client)
   async function markManualXP(formData: FormData) {
     "use server";
     const supabaseServer = await createClient();
@@ -62,13 +81,17 @@ export default async function LeaderboardAdminPage() {
     const amountStr = formData.get("amount") as string;
     const isPenalty = formData.get("type") === "penalty";
     
-    // Calculate actual integer (negative if penalty)
     let amount = parseInt(amountStr) || 0;
-    if (amount <= 0) return; // Ignore zeroes
-    if (isPenalty) amount = -Math.abs(amount); // Force negative
+    if (amount <= 0) return; 
+    if (isPenalty) amount = -Math.abs(amount); 
 
-    // A. Log the event in xp_events
-    const { error: eventError } = await supabaseServer
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // A. Insert into xp_events table (Source of truth for all XP)[cite: 14]
+    const { error: eventError } = await supabaseAdmin
       .from("xp_events")
       .insert([
         {
@@ -85,42 +108,33 @@ export default async function LeaderboardAdminPage() {
       return;
     }
 
-    // B. Update the student's Total XP in league_memberships
-    // We fetch current XP first, calculate new total, then update.
-    const { data: currentMembership } = await supabaseServer
-      .from("league_memberships")
-      .select("id, xp_total")
-      .eq("user_id", studentId)
-      .eq("season_id", activeSeason ? activeSeason.id : null)
-      .maybeSingle();
+    // B. Recalculate total XP from all events for this user and sync league_memberships
+    const { data: userEvents } = await supabaseAdmin
+      .from("xp_events")
+      .select("amount")
+      .eq("user_id", studentId);
 
-    if (currentMembership) {
-      // Update existing record
-      const newTotal = Math.max(0, currentMembership.xp_total + amount); // Prevent negative XP
-      await supabaseServer
-        .from("league_memberships")
-        .update({ xp_total: newTotal })
-        .eq("id", currentMembership.id);
-    } else {
-      // Insert new record if this student isn't on the board yet
-      const initialTotal = Math.max(0, amount);
-      await supabaseServer
-        .from("league_memberships")
-        .insert([{
-          user_id: studentId,
-          season_id: activeSeason ? activeSeason.id : null,
-          league: "code_starter",
-          xp_total: initialTotal
-        }]);
-    }
+    const calculatedTotalXp = userEvents?.reduce((sum, ev) => sum + Number(ev.amount), 0) || 0;
+
+    // Upsert into league_memberships so the total reflects everywhere instantly
+    await supabaseAdmin
+      .from("league_memberships")
+      .upsert({
+        user_id: studentId,
+        season_id: activeSeason ? activeSeason.id : null,
+        xp_total: Math.max(0, calculatedTotalXp),
+        league: calculatedTotalXp > 500 ? "code_champion" : calculatedTotalXp > 200 ? "code_builder" : "code_starter"
+      }, { onConflict: 'season_id, user_id' });
 
     revalidatePath("/admin/leaderboard");
+    revalidatePath("/leaderboard");
+    revalidatePath("/dashboard");
   }
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
-      {/* Cinematic Header with Entry Animation */}
+      {/* Cinematic Header */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
@@ -163,7 +177,7 @@ export default async function LeaderboardAdminPage() {
                     className="flex h-12 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent backdrop-blur-sm appearance-none cursor-pointer"
                   >
                     <option value="" disabled className="bg-gray-900 text-[#E2D1FE]/50">Select Student...</option>
-                    {students?.map(st => (
+                    {students.map(st => (
                       <option key={st.id} value={st.id} className="bg-gray-900 text-white">
                         {st.full_name || st.email}
                       </option>
@@ -210,7 +224,7 @@ export default async function LeaderboardAdminPage() {
 
               <Button 
                 type="submit" 
-                className="w-full h-12 mt-4 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg"
+                className="w-full h-12 mt-4 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg cursor-pointer"
               >
                 <Plus className="w-4 h-4 mr-2" /> Apply Manual Action
               </Button>
@@ -218,7 +232,7 @@ export default async function LeaderboardAdminPage() {
           </CardContent>
         </Card>
 
-        {/* Global Rankings Table Card - 99% Transparent */}
+        {/* Global Rankings Table Card */}
         <Card className="animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards lg:col-span-2 bg-white/[0.01] border-white/5 backdrop-blur-sm shadow-none rounded-3xl overflow-hidden flex flex-col">
           <CardHeader className="bg-transparent border-b border-white/5 pt-8 px-8 pb-6">
             <CardTitle className="text-2xl font-bold text-foreground flex items-center justify-between">
@@ -243,8 +257,8 @@ export default async function LeaderboardAdminPage() {
               <TableBody>
                 {rankings && rankings.length > 0 ? (
                   rankings.map((entry, index) => {
-                    const userName = Array.isArray(entry.user) ? entry.user[0]?.full_name : entry.user?.full_name;
-                    const email = Array.isArray(entry.user) ? entry.user[0]?.email : entry.user?.email;
+                    const userName = entry.user?.full_name;
+                    const email = entry.user?.email;
                     const rank = index + 1;
                     const animationDelay = `${(index + 3) * 100}ms`;
 
@@ -265,7 +279,7 @@ export default async function LeaderboardAdminPage() {
                            <span className="text-[#E2D1FE]/60 font-mono text-sm">#{rank}</span>}
                         </TableCell>
                         <TableCell className="py-4">
-                          <div className="font-bold text-foreground drop-shadow-sm truncate max-w-[200px]">{userName || "Unknown"}</div>
+                          <div className="font-bold text-foreground drop-shadow-sm truncate max-w-[200px]">{userName || "Unknown Dev"}</div>
                           <div className="text-xs font-medium text-[#E2D1FE]/40 mt-0.5">{email}</div>
                         </TableCell>
                         <TableCell className="py-4 whitespace-nowrap">
@@ -288,7 +302,7 @@ export default async function LeaderboardAdminPage() {
                   })
                 ) : (
                   <TableRow className="border-none hover:bg-transparent">
-                    <TableCell colSpan={5} className="text-center py-20 text-[#E2D1FE]/40 font-medium tracking-wide">
+                    <TableCell colSpan={4} className="text-center py-20 text-[#E2D1FE]/40 font-medium tracking-wide">
                       No leaderboard data available. Start granting XP!
                     </TableCell>
                   </TableRow>

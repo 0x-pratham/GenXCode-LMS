@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -7,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Code, ExternalLink, CheckCircle, AlertCircle, MessageSquare, Flame } from "lucide-react";
 
@@ -49,7 +49,7 @@ export default async function SubmissionsAdminPage() {
     console.error("Error fetching submissions:", error.message);
   }
 
-  // 3. Fully Self-Contained Server Action: Review, Grade, XP & Audit Log
+  // 3. Fully Self-Contained Server Action: Review, Grade, XP & Leaderboard Synchronization
   async function handleReviewSubmission(formData: FormData) {
     "use server";
     const supabaseServer = await createClient();
@@ -58,47 +58,73 @@ export default async function SubmissionsAdminPage() {
 
     const submissionId = formData.get("submissionId") as string;
     const studentId = formData.get("userId") as string;
+    const challengeId = formData.get("challengeId") as string;
     const actionType = formData.get("actionType") as string; // 'reviewed' or 'returned'
     const feedback = formData.get("feedback") as string;
-    const score = parseFloat(formData.get("score") as string) || 0;
+    const awardedXp = parseFloat(formData.get("score") as string) || 0;
+
+    // Use Admin Client to bypass RLS restrictions safely during background updates
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
     // A. Update the submission table
-    const { error: updateError } = await supabaseServer
+    const { error: updateError } = await supabaseAdmin
       .from("challenge_submissions")
       .update({
         status: actionType,
         feedback,
-        score: actionType === 'reviewed' ? score : 0,
+        score: actionType === 'reviewed' ? awardedXp : 0,
         reviewed_by: currentUser.id,
         reviewed_at: new Date().toISOString()
       })
       .eq("id", submissionId);
-
-    // B. Auto-distribute XP if approved
-    if (!updateError && actionType === "reviewed" && score > 0) {
-      await supabaseServer.from("xp_events").upsert({
-        user_id: studentId,
-        source_type: 'challenge',
-        source_id: submissionId,
-        amount: score,
-        awarded_by: currentUser.id
-      }, { onConflict: 'user_id, source_type, source_id' });
-    }
-
-    // C. Auto-record into Audit Logs
-    await supabaseServer.from("audit_logs").insert([{
-      actor_id: currentUser.id,
-      action: actionType === "reviewed" ? "APPROVE_SUBMISSION" : "RETURN_SUBMISSION",
-      target_id: submissionId,
-      status: updateError ? "failed" : "success"
-    }]);
 
     if (updateError) {
       console.error("Failed to review submission:", updateError.message);
       return;
     }
 
+    // B. If approved, record into xp_events and update student's league memberships XP total
+    if (actionType === "reviewed" && awardedXp > 0) {
+      // 1. Upsert into xp_events (Schema unique constraint: user_id, source_type, source_id)
+      await supabaseAdmin.from("xp_events").upsert({
+        user_id: studentId,
+        source_type: 'challenge',
+        source_id: challengeId,
+        amount: awardedXp,
+        awarded_by: currentUser.id
+      }, { onConflict: 'user_id, source_type, source_id' });
+
+      // 2. Fetch current league membership to calculate new cumulative xp_total
+      const { data: membership } = await supabaseAdmin
+        .from("league_memberships")
+        .select("xp_total")
+        .eq("user_id", studentId)
+        .maybeSingle();
+
+      const currentXpTotal = membership?.xp_total || 0;
+      
+      // Upsert cumulative XP into league memberships
+      await supabaseAdmin.from("league_memberships").upsert({
+        user_id: studentId,
+        xp_total: currentXpTotal + awardedXp,
+      }, { onConflict: 'season_id, user_id' }); // Fallback or direct update based on user_id
+    }
+
+    // C. Auto-record into Audit Logs
+    await supabaseAdmin.from("audit_logs").insert([{
+      actor_id: currentUser.id,
+      action: actionType === "reviewed" ? "APPROVE_SUBMISSION" : "RETURN_SUBMISSION",
+      target_id: submissionId,
+      status: "success"
+    }]);
+
     revalidatePath("/admin/submissions");
+    revalidatePath("/challenges");
+    revalidatePath("/leaderboard");
+    revalidatePath("/dashboard");
   }
 
   // Visual Badges for Elite Theme
@@ -159,7 +185,7 @@ export default async function SubmissionsAdminPage() {
                   // Safe joins mapping
                   const studentData = Array.isArray(sub.student) ? sub.student[0] : sub.student;
                   const challengeData = Array.isArray(sub.challenge) ? sub.challenge[0] : sub.challenge;
-                  const maxXP = challengeData?.xp_reward || 0;
+                  const maxXP = challengeData?.xp_reward || 50;
                   const challengeId = challengeData?.id || "";
 
                   return (
@@ -225,7 +251,7 @@ export default async function SubmissionsAdminPage() {
                             <input type="hidden" name="challengeId" value={challengeId} />
                             
                             <div className="flex gap-3 items-center justify-between">
-                              <Label className="text-xs font-bold text-[#E2D1FE]/70">Award XP:</Label>
+                              <label className="text-xs font-bold text-[#E2D1FE]/70">Award XP:</label>
                               <Input 
                                 name="score" 
                                 type="number" 
@@ -244,10 +270,10 @@ export default async function SubmissionsAdminPage() {
                             />
                             
                             <div className="flex gap-3 w-full mt-1">
-                              <button type="submit" name="actionType" value="reviewed" className="flex-1 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 font-bold transition-all shadow-md flex items-center justify-center text-xs">
+                              <button type="submit" name="actionType" value="reviewed" className="flex-1 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 font-bold transition-all shadow-md flex items-center justify-center text-xs cursor-pointer">
                                 <CheckCircle className="w-4 h-4 mr-1.5" /> Approve
                               </button>
-                              <button type="submit" name="actionType" value="returned" className="flex-1 h-10 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 font-bold transition-all shadow-md flex items-center justify-center text-xs">
+                              <button type="submit" name="actionType" value="returned" className="flex-1 h-10 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 font-bold transition-all shadow-md flex items-center justify-center text-xs cursor-pointer">
                                 <AlertCircle className="w-4 h-4 mr-1.5" /> Return
                               </button>
                             </div>

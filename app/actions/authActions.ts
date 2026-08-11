@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { type RequestInviteInput } from "@/schemas/auth";
 
 /**
  * Login user using Supabase Auth.
@@ -21,27 +20,23 @@ export async function loginUser(formData: FormData) {
   });
 
   if (error) {
-    // Agar login fail ho, error ko login page par query parameter ke through bhej do.
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  // Fix: Force Next.js to revalidate the layout so the session state is updated immediately
+  // Force Next.js to revalidate layout so session updates immediately
   revalidatePath("/", "layout");
   
-  // Login successful hone par dashboard par redirect.
   redirect("/dashboard");
 }
 
 /**
  * Logout current user.
  */
-export async function logout() {
+export async function logoutUser() {
   const supabase = await createClient();
 
-  // Supabase session clear karo.
   await supabase.auth.signOut();
 
-  // Fix: Clear cache on logout too
   revalidatePath("/", "layout");
   redirect("/login");
 }
@@ -49,35 +44,39 @@ export async function logout() {
 /**
  * Submit a public invite request.
  */
-export async function submitInviteRequest(data: RequestInviteInput) {
-  try {
-    const supabase = await createClient();
+export async function submitInviteRequest(formData: FormData) {
+  const supabase = await createClient();
 
-    const { error } = await supabase
-      .from("invite_requests")
-      .insert([
-        {
-          full_name: data.fullName,
-          email: data.email.toLowerCase(),
-          portfolio_url: data.portfolioUrl || null,
-          reason: data.reason,
-        },
-      ]);
+  const fullName = formData.get("full_name") as string;
+  const email = formData.get("email") as string;
+  const portfolioUrl = formData.get("portfolio_url") as string;
+  const reason = formData.get("reason") as string;
 
-    if (error) {
-      console.error("Supabase invite request error:", error);
-      
-      // Handle unique email constraint error
-      if (error.code === '23505') {
-        return { success: false, error: "An invite request with this email already exists." };
-      }
-      
-      return { success: false, error: "Failed to submit request. Please try again." };
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    console.error("Error submitting invite request:", error);
-    return { success: false, error: "Failed to submit request." };
+  if (!fullName || !email || !reason) {
+    redirect(`/request-invite?error=Please fill in all required fields.`);
   }
+
+  // Inserting into invite_requests table
+  const { error } = await supabase.from("invite_requests").insert([
+    {
+      full_name: fullName,
+      email: email.toLowerCase(),
+      portfolio_url: portfolioUrl || null,
+      reason: reason,
+      status: "pending",
+    },
+  ]);
+
+  if (error) {
+    console.error("Supabase invite request error:", error);
+    
+    // Handle unique constraint error (email already requested)
+    if (error.code === '23505') {
+      redirect(`/request-invite?error=An invite request for this email already exists.`);
+    }
+    
+    redirect(`/request-invite?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect("/request-invite?success=true");
 }

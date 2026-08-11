@@ -44,9 +44,8 @@ export default async function AdminChallengesPage() {
     const description = formData.get("description") as string;
     const difficulty = formData.get("difficulty") as "beginner" | "intermediate" | "advanced";
     const xpReward = parseInt(formData.get("xpReward") as string) || 50;
-    const dueAtStr = formData.get("dueAt") as string; // Optional Deadline Date
+    const dueAtStr = formData.get("dueAt") as string; 
     
-    // According to schema: opens_at is required, due_at is optional.
     const now = new Date().toISOString();
     const dueAt = dueAtStr ? new Date(dueAtStr).toISOString() : null;
 
@@ -58,7 +57,7 @@ export default async function AdminChallengesPage() {
           description: description,
           difficulty: difficulty,
           xp_reward: xpReward,
-          status: "published", // Automatically publish on creation
+          status: "published", 
           opens_at: now,
           due_at: dueAt,
           created_by: currentUser.id
@@ -71,6 +70,7 @@ export default async function AdminChallengesPage() {
     }
 
     revalidatePath(`/admin/challenges`);
+    revalidatePath(`/challenges`);
   }
 
   // 4. Server Action to toggle status (Publish <-> Draft)
@@ -92,6 +92,7 @@ export default async function AdminChallengesPage() {
     }
 
     revalidatePath(`/admin/challenges`);
+    revalidatePath(`/challenges`);
   }
 
   return (
@@ -181,7 +182,7 @@ export default async function AdminChallengesPage() {
                 </div>
               </div>
 
-              {/* Added Deadline Feature */}
+              {/* Deadline Feature */}
               <div className="space-y-2.5 pt-2 border-t border-white/5">
                 <Label htmlFor="dueAt" className="text-foreground font-bold ml-1 flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-amber-400" /> Deadline Date & Time (Optional)
@@ -227,12 +228,11 @@ export default async function AdminChallengesPage() {
                     const animationDelay = `${(index + 4) * 100}ms`;
                     const isPublished = challenge.status === 'published';
                     
-                    // Auto Expiration Calculation without changing the database row
                     let isExpired = false;
                     let deadlineText = "No Deadline";
                     if (challenge.due_at) {
                       const due = new Date(challenge.due_at);
-                      isExpired = due < new Date(); // If current time is past due time
+                      isExpired = due < new Date(); 
                       deadlineText = due.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
                     }
 
@@ -259,7 +259,6 @@ export default async function AdminChallengesPage() {
                           </span>
                         </TableCell>
                         <TableCell className="py-4">
-                          {/* Visual feedback for expiration */}
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-md border whitespace-nowrap ${
                             isExpired ? 'bg-red-500/10 text-red-400 border-red-500/20' : challenge.due_at ? 'bg-amber-400/10 text-amber-400 border-amber-400/20' : 'bg-white/5 text-[#E2D1FE]/40 border-transparent'
                           }`}>
@@ -267,11 +266,10 @@ export default async function AdminChallengesPage() {
                           </span>
                         </TableCell>
                         <TableCell className="py-4 text-right pr-8">
-                          {/* Toggle Form mapped directly to the Badge */}
                           <form action={toggleChallengeStatus} className="inline-block">
                             <input type="hidden" name="challengeId" value={challenge.id} />
                             <input type="hidden" name="currentStatus" value={challenge.status} />
-                            <button type="submit" className="transition-transform hover:scale-105 active:scale-95" title="Click to toggle status">
+                            <button type="submit" className="transition-transform hover:scale-105 active:scale-95 cursor-pointer" title="Click to toggle status">
                               <Badge 
                                 variant="outline" 
                                 className={`capitalize px-3 py-1 font-bold backdrop-blur-md border cursor-pointer ${

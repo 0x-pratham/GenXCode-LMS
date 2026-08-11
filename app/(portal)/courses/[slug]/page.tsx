@@ -15,6 +15,7 @@ type Lesson = {
   estimated_minutes: number;
   is_preview: boolean;
   completed?: boolean;
+  duration?: string; // FIXED: Added duration to the type definition
 };
 
 type Module = {

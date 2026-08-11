@@ -14,16 +14,21 @@ export default async function PortalLayout({
   } = await supabase.auth.getUser();
 
   let userRole = "student";
+  let mustChangePassword = false;
 
   if (user) {
+    // Fetch both role and must_change_password flag
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, must_change_password")
       .eq("id", user.id)
       .single();
 
     if (profile?.role) {
       userRole = profile.role;
+    }
+    if (profile?.must_change_password !== undefined) {
+      mustChangePassword = profile.must_change_password;
     }
   }
 
@@ -44,7 +49,8 @@ export default async function PortalLayout({
       </div>
 
       <div className="relative z-10 flex w-full">
-        <Sidebar userRole={userRole} />
+        {/* Pass both props to the Sidebar */}
+        <Sidebar userRole={userRole} mustChangePassword={mustChangePassword} />
 
         <div className="flex flex-col flex-1 md:pl-64 transition-all duration-300 min-h-screen">
           {/* Mobile Header - Converted to Glass */}

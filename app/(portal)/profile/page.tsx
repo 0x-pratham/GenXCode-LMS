@@ -6,46 +6,128 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Save, Flame, Trophy, Sparkles, ShieldCheck } from "lucide-react";
-import { updateProfile } from "@/app/actions/profileActions";
+import { User, Mail, Save, Flame, Trophy, Sparkles, ShieldCheck, AlertTriangle, Lock, CheckCircle2, AlertCircle } from "lucide-react";
+import { updatePasswordAndProfile } from "@/app/actions/profileActions";
 
-export default async function ProfilePage() {
+// Next 15+ searchParams Promise mapping
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+  const successMessage = params.success;
+  const errorMessage = params.error;
+
   const supabase = await createClient();
   
-  // 1. Safe Auth Check
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
-  // 2. Fetch Profile & League Stats safely using .maybeSingle() to prevent crashes
+  // 1. Fetch Profile Data
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
+  // 2. Fetch League Memberships (for fallback league name)
   const { data: league } = await supabase
     .from("league_memberships")
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // 3. Fetch EXACT XP Total from xp_events (The ultimate source of truth)[cite: 14]
+  const { data: xpEvents } = await supabase
+    .from("xp_events")
+    .select("amount")
+    .eq("user_id", user.id);
+
+  // Calculate actual total XP dynamically
+  const calculatedXp = xpEvents?.reduce((sum, ev) => sum + Number(ev.amount), 0) || 0;
+
   const fullName = profile?.full_name || "";
-  const email = profile?.email || user.email || ""; // Fallback to auth user email just in case
+  const email = profile?.email || user.email || "";
   const avatarUrl = profile?.avatar_url || "";
   const role = profile?.role || "student";
+  const mustChangePassword = profile?.must_change_password || false;
   
-  const totalXp = league?.xp_total || 0;
-  const currentLeague = league?.league?.replace('_', ' ') || "Code Starter";
-
-  // Visual Only Logic: Calculate a mock progress percentage based on XP for the new UI add-on
+  // Use calculated XP. If it's 0 but league has XP, use league XP as fallback.
+  const totalXp = calculatedXp > 0 ? calculatedXp : (league?.xp_total || 0);
+  
+  // Dynamic League assignment based on actual XP
+  let currentLeagueName = "code starter";
+  if (totalXp > 500) currentLeagueName = "code champion";
+  else if (totalXp > 200) currentLeagueName = "code builder";
+  
+  const currentLeague = league?.league?.replace('_', ' ') || currentLeagueName.replace('_', ' ');
   const xpProgress = Math.min((totalXp % 1000) / 10, 100) || 5;
 
   return (
     <div className="space-y-10 max-w-6xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
-      {/* Cinematic Header with Entry Animation */}
+      {/* FLOATING TOAST NOTIFICATIONS */}
+      {successMessage && (
+        <div className="fixed top-24 right-8 z-[100] animate-fade-in-down pointer-events-none">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-2xl backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.2)] flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="font-bold text-sm">{successMessage}</span>
+          </div>
+        </div>
+      )}
+      {errorMessage && (
+        <div className="fixed top-24 right-8 z-[100] animate-fade-in-down pointer-events-none">
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-6 py-4 rounded-2xl backdrop-blur-xl shadow-[0_0_30px_rgba(239,68,68,0.2)] flex items-center gap-3">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-bold text-sm">{errorMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {/* MANDATORY PASSWORD CHANGE POPUP MODAL */}
+      {mustChangePassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 animate-fade-in">
+          <div className="relative w-full max-w-lg bg-[#0C0224] border border-amber-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+            <div className="flex items-center gap-3 mb-4 text-amber-400">
+              <AlertTriangle className="w-8 h-8 animate-bounce" />
+              <h2 className="font-heading text-2xl font-bold">Action Required</h2>
+            </div>
+            <p className="text-sm text-[#E2D1FE]/80 mb-6 leading-relaxed">
+              You are currently logged in with a temporary default password (<span className="text-foreground font-mono font-bold">Welcome2GenXCode</span>). For security reasons, you must change your password before accessing the portal.
+            </p>
+
+            <form action={updatePasswordAndProfile} className="space-y-4">
+              <input type="hidden" name="fullName" value={fullName} />
+              <input type="hidden" name="avatarUrl" value={avatarUrl} />
+              
+              <div className="space-y-2">
+                <Label className="text-foreground font-bold text-xs">New Secure Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E2D1FE]/40" />
+                  <Input 
+                    name="newPassword" 
+                    type="password" 
+                    placeholder="Enter new secure password" 
+                    required 
+                    minLength={6}
+                    className="pl-10 bg-black/40 border-amber-500/30 text-foreground rounded-xl h-12 focus-visible:ring-amber-500"
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 mt-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 text-foreground font-bold shadow-lg hover:brightness-110"
+              >
+                Update Password & Continue
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cinematic Header */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
@@ -66,16 +148,11 @@ export default async function ProfilePage() {
         
         {/* Left Column: Stats & Display */}
         <div className="md:col-span-1 space-y-6">
-          
-          {/* Identity Card */}
           <Card className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards text-center overflow-hidden bg-black/20 border-white/10 backdrop-blur-xl rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-            {/* Premium Banner */}
             <div className="h-32 w-full bg-gradient-to-br from-accent/40 via-[#22044B]/60 to-black/80 relative">
               <div className="absolute inset-0 bg-[url('/assets/grid-pattern.svg')] opacity-20"></div>
             </div>
-            
             <CardContent className="pt-0 relative px-6 pb-8">
-              {/* Glowing Avatar */}
               <Avatar className="w-28 h-28 border-[4px] border-black/80 shadow-[0_0_30px_rgba(134,56,205,0.4)] mx-auto -mt-14 mb-4 bg-background relative z-10">
                 <AvatarImage src={avatarUrl} className="object-cover" />
                 <AvatarFallback className="text-4xl font-bold bg-white/5 text-[#E2D1FE]">
@@ -92,7 +169,6 @@ export default async function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* New Add-on: Advanced Stats Card */}
           <Card className="animate-fade-in-up [animation-delay:300ms] opacity-0 fill-mode-forwards bg-black/20 border-white/10 backdrop-blur-xl rounded-3xl shadow-xl">
             <CardHeader className="pb-4 border-b border-white/5">
               <CardTitle className="text-sm text-[#E2D1FE]/60 uppercase tracking-widest font-bold flex items-center gap-2">
@@ -100,8 +176,6 @@ export default async function ProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-5">
-              
-              {/* XP Progress Block */}
               <div className="flex flex-col gap-2 p-4 rounded-2xl bg-black/40 border border-white/5 shadow-inner">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-bold text-[#E2D1FE]/80">
@@ -111,19 +185,14 @@ export default async function ProfilePage() {
                     {totalXp.toLocaleString()}
                   </div>
                 </div>
-                {/* Visual Progress Bar to Next Tier */}
                 <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden border border-white/5 mt-1">
                   <div 
-                    className="h-full bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-400 shadow-[0_0_10px_rgba(249,115,22,0.5)] transition-all duration-1000"
+                    className="h-full bg-gradient-to-r from-orange-600 via-orange-500 to-yellow-400 transition-all duration-1000"
                     style={{ width: `${xpProgress}%` }}
                   />
                 </div>
-                <div className="text-[10px] font-bold text-[#E2D1FE]/40 text-right uppercase tracking-wider">
-                  Next Tier Progress
-                </div>
               </div>
 
-              {/* League Block */}
               <div className="flex items-center justify-between p-4 rounded-2xl bg-black/40 border border-white/5 shadow-inner">
                 <div className="flex items-center gap-2 text-sm font-bold text-[#E2D1FE]/80">
                   <Trophy className="w-4 h-4 text-accent" /> Current League
@@ -142,24 +211,18 @@ export default async function ProfilePage() {
             <CardHeader className="pb-6 border-b border-white/5 pt-8 px-8">
               <CardTitle className="text-2xl font-bold text-foreground">Profile Settings</CardTitle>
               <CardDescription className="text-[#E2D1FE]/70 text-base mt-2">
-                Update how you appear on the leaderboard and in the community.
+                Update your identity and account security credentials.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-8 px-8">
-              <form action={updateProfile} className="space-y-7">
+              <form action={updatePasswordAndProfile} className="space-y-7">
                 
                 <div className="space-y-2.5">
-                  <Label htmlFor="email" className="text-foreground/80 font-bold ml-1">Email Address (Read-only)</Label>
+                  <Label className="text-foreground/80 font-bold ml-1">Email Address (Read-only)</Label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E2D1FE]/40" />
-                    <Input 
-                      id="email" 
-                      value={email} 
-                      disabled 
-                      className="pl-11 bg-black/40 border-white/5 text-[#E2D1FE]/50 rounded-xl h-12 shadow-inner" 
-                    />
+                    <Input value={email} disabled className="pl-11 bg-black/40 border-white/5 text-[#E2D1FE]/50 rounded-xl h-12 shadow-inner" />
                   </div>
-                  <p className="text-[11px] font-medium text-amber-400/70 ml-1">To change your registered email, please contact a platform administrator.</p>
                 </div>
 
                 <div className="space-y-2.5">
@@ -168,9 +231,8 @@ export default async function ProfilePage() {
                     id="fullName" 
                     name="fullName" 
                     defaultValue={fullName} 
-                    placeholder="Enter your full name" 
                     required 
-                    className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm"
+                    className="bg-black/20 border-white/10 text-foreground rounded-xl h-12 backdrop-blur-sm"
                   />
                 </div>
 
@@ -187,10 +249,21 @@ export default async function ProfilePage() {
                   <p className="text-[11px] font-medium text-[#E2D1FE]/50 ml-1">Provide a direct link to an image (e.g., from Imgur, GitHub, or LinkedIn).</p>
                 </div>
 
-                <div className="pt-8 flex justify-end">
+                <div className="space-y-2.5 border-t border-white/10 pt-6">
+                  <Label htmlFor="newPassword" className="text-foreground font-bold ml-1">Change Password (Optional)</Label>
+                  <Input 
+                    id="newPassword" 
+                    name="newPassword" 
+                    type="password" 
+                    placeholder="Enter new password to update" 
+                    className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 rounded-xl h-12 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end">
                   <Button 
                     type="submit" 
-                    className="h-12 px-8 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg w-full sm:w-auto"
+                    className="h-12 px-8 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow shadow-lg w-full sm:w-auto"
                   >
                     <Save className="w-4 h-4 mr-2" /> Save Changes
                   </Button>

@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Flame, Crown, Medal } from "lucide-react";
+import { Trophy, Flame, Crown, Medal, Star } from "lucide-react";
 
 export default async function LeaderboardPage() {
   const supabase = await createClient();
@@ -13,44 +14,67 @@ export default async function LeaderboardPage() {
     redirect("/login");
   }
 
-  // 2. Backend Logic Remains Unchanged (Fetch Profiles & XP)
-  const { data: profiles, error } = await supabase
-    .from("profiles")
-    .select(`
-      id,
-      full_name,
-      email,
-      avatar_url,
-      league_memberships (
-        xp_total,
-        league
-      )
-    `)
-    .eq("is_active", true);
+  // 2. Use Admin Client to bypass RLS so all active profiles are visible to students on leaderboard
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
-  if (error) {
-    console.error("Error fetching leaderboard profiles:", error.message);
+  const [
+    { data: profiles, error: profilesError },
+    { data: memberships },
+    { data: xpEvents }
+  ] = await Promise.all([
+    supabaseAdmin.from("profiles").select("id, full_name, email, avatar_url").eq("is_active", true),
+    supabaseAdmin.from("league_memberships").select("user_id, league, xp_total"),
+    supabaseAdmin.from("xp_events").select("user_id, amount")
+  ]);
+
+  if (profilesError) {
+    console.error("Error fetching leaderboard profiles:", profilesError.message);
   }
 
-  // Flatten and sort users by total XP descending
+  // Aggregate total XP from xp_events table as the ultimate source of truth[cite: 14]
+  const xpMap = new Map<string, number>();
+  xpEvents?.forEach(ev => {
+    const current = xpMap.get(ev.user_id) || 0;
+    xpMap.set(ev.user_id, current + Number(ev.amount));
+  });
+
+  const membershipMap = new Map<string, { league: string; xp_total: number }>();
+  memberships?.forEach(m => {
+    membershipMap.set(m.user_id, { league: m.league, xp_total: m.xp_total });
+  });
+
+  // Combine and sort ALL active members by total XP descending
   const leaders = profiles?.map(profile => {
-    const membership = profile.league_memberships?.[0] || { xp_total: 0, league: 'code_starter' };
+    const eventXp = xpMap.get(profile.id) || 0;
+    const memberData = membershipMap.get(profile.id);
+    const membershipXp = memberData?.xp_total || 0;
+    
+    const finalXp = Math.max(eventXp, membershipXp);
+    const league = memberData?.league || (finalXp > 500 ? 'code_champion' : finalXp > 200 ? 'code_builder' : 'code_starter');
+
     return {
       id: profile.id,
       full_name: profile.full_name || "Developer",
       email: profile.email,
       avatar_url: profile.avatar_url,
-      xp_total: membership.xp_total || 0,
-      league: membership.league || 'code_starter',
+      xp_total: finalXp,
+      league: league,
     };
   }).sort((a, b) => b.xp_total - a.xp_total) || [];
 
+  // Find the logged-in user's exact rank and position
+  const userIndex = leaders.findIndex(item => item.id === user.id);
+  const userRank = userIndex !== -1 ? userIndex + 1 : null;
+  const loggedInUserData = userIndex !== -1 ? leaders[userIndex] : null;
+
   return (
-    // FIXED: Changed to max-w-7xl and added responsive px-4 sm:px-6 for perfect margins
     <div className="space-y-10 max-w-7xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
       {/* Cinematic Header with Entry Animation */}
-      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
@@ -64,10 +88,27 @@ export default async function LeaderboardPage() {
             Top developers ranked by total XP earned across all leagues and quests.
           </p>
         </div>
+
+        {/* LOGGED-IN USER STANDING HIGHLIGHT CARD */}
+        {loggedInUserData && userRank && (
+          <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards bg-accent/10 border border-accent/30 rounded-3xl p-5 backdrop-blur-xl shadow-[0_0_30px_rgba(134,56,205,0.2)] flex items-center gap-5 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-accent/20 border border-accent/40 flex items-center justify-center text-accent font-heading font-bold text-xl shadow-inner">
+              #{userRank}
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-widest font-bold text-[#E2D1FE]/60 flex items-center gap-1.5">
+                <Star className="w-3.5 h-3.5 text-accent fill-accent" /> Your Global Standing
+              </div>
+              <div className="font-heading text-lg font-bold text-foreground mt-0.5">
+                {loggedInUserData.xp_total.toLocaleString()} XP <span className="text-xs font-normal text-accent capitalize">({loggedInUserData.league.replace('_', ' ')})</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="w-full">
-        {/* Table Header (Visually distinct from rows) */}
+        {/* Table Header */}
         <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards hidden md:flex items-center px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#E2D1FE]/50 mb-3 border-b border-white/5">
           <div className="w-20 text-center">Rank</div>
           <div className="flex-1 pl-4">Developer</div>
@@ -82,8 +123,8 @@ export default async function LeaderboardPage() {
               const rank = index + 1;
               const leagueName = item.league ? item.league.replace('_', ' ') : "Code Starter";
               const animationDelay = `${(index + 3) * 100}ms`;
+              const isCurrentUser = item.id === user.id;
 
-              // Special logic for Top 3 styling
               const isFirst = rank === 1;
               const isSecond = rank === 2;
               const isThird = rank === 3;
@@ -102,6 +143,10 @@ export default async function LeaderboardPage() {
                 rankElement = <Medal className="w-7 h-7 text-amber-500 drop-shadow-md mx-auto" />;
               }
 
+              if (isCurrentUser && !isFirst && !isSecond && !isThird) {
+                rowBaseClass = "bg-accent/10 border-accent/30 shadow-[0_0_20px_rgba(134,56,205,0.15)] hover:bg-accent/20";
+              }
+
               return (
                 <div 
                   key={item.id} 
@@ -115,14 +160,17 @@ export default async function LeaderboardPage() {
                   
                   {/* Developer Profile */}
                   <div className="flex-1 flex items-center gap-4 w-full justify-center md:justify-start mb-4 md:mb-0 pl-0 md:pl-4">
-                    <Avatar className={`w-12 h-12 border-2 ${isFirst ? 'border-yellow-400/50' : isSecond ? 'border-slate-300/50' : isThird ? 'border-amber-500/50' : 'border-white/10 shadow-inner'}`}>
+                    <Avatar className={`w-12 h-12 border-2 ${isFirst ? 'border-yellow-400/50' : isSecond ? 'border-slate-300/50' : isThird ? 'border-amber-500/50' : isCurrentUser ? 'border-accent shadow-[0_0_10px_rgba(134,56,205,0.5)]' : 'border-white/10 shadow-inner'}`}>
                       <AvatarImage src={item.avatar_url || ""} />
                       <AvatarFallback className="bg-white/5 text-foreground font-bold">
                         {item.full_name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="text-center md:text-left">
-                      <div className="font-bold text-foreground text-lg truncate max-w-[200px] sm:max-w-xs">{item.full_name}</div>
+                      <div className="font-bold text-foreground text-lg truncate max-w-[200px] sm:max-w-xs flex items-center gap-2">
+                        {item.full_name} 
+                        {isCurrentUser && <span className="text-[10px] uppercase bg-accent/20 text-accent font-extrabold px-2 py-0.5 rounded-full border border-accent/30">You</span>}
+                      </div>
                       <div className="text-xs font-medium text-[#E2D1FE]/50 truncate max-w-[200px] sm:max-w-xs">{item.email}</div>
                     </div>
                   </div>
@@ -133,6 +181,7 @@ export default async function LeaderboardPage() {
                       isFirst ? 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10' : 
                       isSecond ? 'border-slate-400/40 text-slate-300 bg-slate-400/10' : 
                       isThird ? 'border-amber-600/40 text-amber-500 bg-amber-600/10' : 
+                      isCurrentUser ? 'border-accent/40 text-accent bg-accent/10' :
                       'border-white/20 text-[#E2D1FE] bg-white/5'
                     }`}>
                       {leagueName}

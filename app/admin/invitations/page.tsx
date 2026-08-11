@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,12 +35,11 @@ export default async function InvitationsPage() {
     console.error("Error fetching invite requests:", requestsError.message);
   }
 
-  // 3. Server Action: Approve an Invite Request
+  // 3. Server Action: Approve an Invite Request & Create User Account with Default Password
   async function approveRequest(formData: FormData) {
     "use server";
     const supabaseServer = await createClient();
     
-    // Auth Check inside action
     const { data: { user: currentUser } } = await supabaseServer.auth.getUser();
     if (!currentUser) return;
 
@@ -47,7 +47,38 @@ export default async function InvitationsPage() {
     const email = formData.get("email") as string;
     const fullName = formData.get("fullName") as string;
 
-    // A. Update request status to 'approved'
+    // A. Create Supabase Admin Client using Service Role Key to bypass signup blocks and create user
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // B. Check if user already exists in auth.users
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const userExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
+
+    if (!userExists) {
+      // Create user with requested email and default password "Welcome2GenXCode"
+      const { error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+        email: email.toLowerCase(),
+        password: "Welcome2GenXCode",
+        email_confirm: true, // Auto confirm email since admin approved it
+        user_metadata: { full_name: fullName }
+      });
+
+      if (createUserError) {
+        console.error("Failed to create user account in auth:", createUserError.message);
+        return;
+      }
+    }
+
+    // C. Update request status to 'approved'
     const { error: updateError } = await supabaseServer
       .from("invite_requests")
       .update({ status: 'approved' })
@@ -58,25 +89,20 @@ export default async function InvitationsPage() {
       return;
     }
 
-    // B. Insert into actual invitations table to grant platform access
+    // D. Insert into actual invitations table to track system invite
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
 
-    const { error: inviteError } = await supabaseServer
+    await supabaseServer
       .from("invitations")
-      .insert([{
-        email: email,
+      .upsert([{
+        email: email.toLowerCase(),
         full_name: fullName,
         role: "student",
         invited_by: currentUser.id,
         expires_at: expiresAt.toISOString(),
-        status: "sent"
-      }]);
-
-    if (inviteError) {
-      console.error("Failed to generate system invitation:", inviteError.message);
-      return;
-    }
+        status: "accepted" // Automatically accepted since account is created
+      }], { onConflict: 'email' });
 
     revalidatePath("/admin/invitations");
   }
@@ -115,7 +141,7 @@ export default async function InvitationsPage() {
             </div>
           </h1>
           <p className="text-[#E2D1FE]/80 mt-4 text-lg font-medium drop-shadow-md max-w-xl">
-            Review and approve public requests to join the platform. Approving a request generates a 7-day invite link.
+            Review and approve public requests to join the platform. Approving instantly provisions their account with the default password.
           </p>
         </div>
       </div>
@@ -190,7 +216,7 @@ export default async function InvitationsPage() {
                               <input type="hidden" name="requestId" value={req.id} />
                               <input type="hidden" name="email" value={req.email} />
                               <input type="hidden" name="fullName" value={req.full_name} />
-                              <Button type="submit" size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition-colors bg-emerald-500/10 border border-emerald-500/20" title="Approve & Send Invite">
+                              <Button type="submit" size="sm" variant="ghost" className="h-9 w-9 p-0 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition-colors bg-emerald-500/10 border border-emerald-500/20" title="Approve & Create Account">
                                 <UserCheck className="w-4 h-4" />
                               </Button>
                             </form>

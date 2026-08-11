@@ -3,11 +3,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
-export async function updateProfile(formData: FormData) {
+// Helper function to create the Supabase server client
+async function createClient() {
     const cookieStore = await cookies();
 
-    const supabase = createServerClient(
+    return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -25,30 +27,63 @@ export async function updateProfile(formData: FormData) {
             },
         }
     );
+}
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+export async function updatePasswordAndProfile(formData: FormData) {
+  const supabase = await createClient();
+  
+  const {
+      data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) throw new Error("Unauthorized");
+  if (!user) {
+      redirect("/login");
+  }
 
-    const fullName = formData.get("fullName") as string;
-    const avatarUrl = formData.get("avatarUrl") as string;
+  const newPassword = formData.get("newPassword") as string;
+  const fullName = formData.get("fullName") as string;
+  const avatarUrl = formData.get("avatarUrl") as string;
 
-    const { error } = await supabase
-        .from("profiles")
-        .update({
-            full_name: fullName,
-            avatar_url: avatarUrl || null,
-        })
-        .eq("id", user.id);
-
-    if (error) {
-        console.error(error);
-        throw new Error(error.message);
+  // Agar naya password diya gaya hai, toh Auth aur Profile dono update karo
+  if (newPassword) {
+    const { error: pwdError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    
+    if (pwdError) {
+      redirect(`/profile?error=${encodeURIComponent(pwdError.message)}`);
     }
 
-    revalidatePath("/profile");
-    revalidatePath("/dashboard");
-    revalidatePath("/leaderboard");
+    // Password change ho gaya, toh mandatory flag ko false kardo, name aur avatar update kardo
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ 
+          must_change_password: false, 
+          full_name: fullName,
+          avatar_url: avatarUrl || null
+      })
+      .eq("id", user.id);
+
+    if (profileError) {
+      console.error(profileError);
+      redirect(`/profile?error=${encodeURIComponent(profileError.message)}`);
+    }
+  } else {
+    // Agar password blank chhora hai, toh sirf naam aur avatar update karo
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ 
+          full_name: fullName,
+          avatar_url: avatarUrl || null
+      })
+      .eq("id", user.id);
+
+    if (profileError) {
+      console.error(profileError);
+      redirect(`/profile?error=${encodeURIComponent(profileError.message)}`);
+    }
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/profile?success=Profile updated successfully");
 }

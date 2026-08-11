@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
@@ -6,15 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, UserCog, ShieldCheck, Mail, Calendar, Activity, Save } from "lucide-react";
+import { ArrowLeft, UserCog, ShieldCheck, Mail, Calendar, Activity, Save, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default async function AdminUserDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ success?: string; error?: string }>;
 }) {
-  const supabase = await createClient();
+  const supabase = await createServerClient();
   const { id: targetUserId } = await params;
+  
+  // Extract toast messages from URL
+  const { success: successMessage, error: errorMessage } = await searchParams;
 
   // 1. Safe Auth & Strict Admin Role Check
   const { data: { user } } = await supabase.auth.getUser();
@@ -31,7 +37,7 @@ export default async function AdminUserDetailsPage({
   }
 
   // 2. Fetch the target user's details
-  const { data: targetUser, error } = await supabase
+  const { data: targetUser, error: fetchError } = await supabase
     .from("profiles")
     .select(`
       *,
@@ -40,7 +46,7 @@ export default async function AdminUserDetailsPage({
     .eq("id", targetUserId)
     .single();
 
-  if (error || !targetUser) {
+  if (fetchError || !targetUser) {
     return (
       <div className="max-w-3xl mx-auto py-20 text-center space-y-4">
         <h2 className="font-heading text-2xl font-bold text-foreground">User Not Found</h2>
@@ -52,36 +58,44 @@ export default async function AdminUserDetailsPage({
     );
   }
 
-  // 3. Inline Server Action for updating the user
+  // 3. Inline Server Action for updating the user using ADMIN CLIENT
   async function updateUserAdmin(formData: FormData) {
     "use server";
-    const supabaseServer = await createClient();
     
-    // Extra security check inside the server action
+    // Auth Check
+    const supabaseServer = await createServerClient();
     const { data: { user: currentUser } } = await supabaseServer.auth.getUser();
     if (!currentUser) throw new Error("Unauthorized");
     
     const role = formData.get("role") as string;
     const isActiveStr = formData.get("is_active") as string;
     const isActive = isActiveStr === "true";
+    const userId = formData.get("targetUserId") as string;
 
-    // This updates the schema field correctly based on [source: 37]
-    const { error: updateError } = await supabaseServer
+    // Use Admin Client to bypass RLS when editing another user's profile
+    const supabaseAdmin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Update the profile using the admin client
+    const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({ 
         role: role, 
         is_active: isActive 
       })
-      .eq("id", targetUserId);
+      .eq("id", userId);
 
     if (updateError) {
       console.error("Failed to update user:", updateError);
-      return;
+      redirect(`/admin/users/${userId}?error=${encodeURIComponent(updateError.message)}`);
     }
 
-    // Refresh the page data
-    revalidatePath(`/admin/users/${targetUserId}`);
+    // Refresh the page data and show success toast
+    revalidatePath(`/admin/users/${userId}`);
     revalidatePath(`/admin/users`);
+    redirect(`/admin/users/${userId}?success=User identity updated successfully`);
   }
 
   const membership = targetUser.league_memberships?.[0];
@@ -92,6 +106,24 @@ export default async function AdminUserDetailsPage({
   return (
     <div className="space-y-8 max-w-6xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
       
+      {/* FLOATING TOAST NOTIFICATIONS */}
+      {successMessage && (
+        <div className="fixed top-24 right-8 z-[100] animate-fade-in-down pointer-events-none">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-2xl backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.2)] flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="font-bold text-sm">{successMessage}</span>
+          </div>
+        </div>
+      )}
+      {errorMessage && (
+        <div className="fixed top-24 right-8 z-[100] animate-fade-in-down pointer-events-none">
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-6 py-4 rounded-2xl backdrop-blur-xl shadow-[0_0_30px_rgba(239,68,68,0.2)] flex items-center gap-3">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-bold text-sm">{errorMessage}</span>
+          </div>
+        </div>
+      )}
+
       {/* Back Navigation & Header */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards">
         <Link href="/admin/users" className="inline-flex items-center text-sm font-bold text-[#E2D1FE]/70 hover:text-accent transition-colors mb-6 group">
@@ -171,6 +203,9 @@ export default async function AdminUserDetailsPage({
             </CardHeader>
             <CardContent className="pt-8 px-8">
               <form action={updateUserAdmin} className="space-y-8">
+                
+                {/* Hidden input to pass targetUserId safely */}
+                <input type="hidden" name="targetUserId" value={targetUserId} />
                 
                 {/* Role Selection */}
                 <div className="space-y-3">

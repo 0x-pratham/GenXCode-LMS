@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Image as ImageIcon, Sparkles } from "lucide-react";
@@ -14,7 +13,6 @@ export default async function GalleryPage() {
   }
 
   // 2. Fetch only 'published' gallery items from Database
-  // Your schema RLS 'public view published gallery' also ensures safety here.
   const { data: galleryItems, error } = await supabase
     .from("gallery_items")
     .select("*")
@@ -49,11 +47,11 @@ export default async function GalleryPage() {
         {galleryItems && galleryItems.length > 0 ? (
           galleryItems.map((item, index) => {
             
-            // 3. Upgraded Storage URL Logic using Supabase Storage API
+            // 3. Robust Storage URL Logic: Handles both Direct Uploads & External URLs flawlessly
             let imageUrl = item.image_path;
             if (item.image_path && !item.image_path.startsWith("http")) {
-              const { data } = supabase.storage.from("gallery").getPublicUrl(item.image_path);
-              imageUrl = data.publicUrl;
+              // Automatically resolve internal bucket paths to full public URLs
+              imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/gallery/${item.image_path}`;
             }
 
             const animationDelay = `${(index + 2) * 150}ms`;
@@ -65,12 +63,15 @@ export default async function GalleryPage() {
                 className="animate-fade-in-up opacity-0 fill-mode-forwards group relative overflow-hidden rounded-3xl border border-white/10 bg-black/40 transition-all duration-500 hover:border-white/20 hover:shadow-[0_8px_32px_rgba(134,56,205,0.2)]"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden">
-                  <Image
-                    src={imageUrl || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop"} // Added ultimate fallback just in case
+                  
+                  {/* FIXED: Using standard HTML img tag to prevent Next.js hostname configuration crashes */}
+                  <img
+                    src={imageUrl || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop"}
                     alt={item.alt_text || item.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110 opacity-90"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90"
+                    loading="lazy"
                   />
+
                   {/* Heavy dark gradient at bottom for perfect text legibility */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-90 transition-opacity duration-500 group-hover:opacity-100" />
                   
