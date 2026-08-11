@@ -11,7 +11,7 @@ const row1Team = [
     role: "Founder & Mentor",
     bio: "Ex-Staff Engineer. Obsessed with high-performance systems and zero-latency UI.",
     initials: "PB",
-    imageUrl: "/assets/prathamesh1.png", 
+    imageUrl: "/assets/Prathamesh1.png", 
     animationClass: "animate-fade-in-left",
     isLead: true
   },
@@ -20,7 +20,7 @@ const row1Team = [
     role: "Club Director",
     bio: "Visionary designer turning complex developer workflows into frictionless experiences.",
     initials: "RY",
-    imageUrl: "/assets/rohit.png", 
+    imageUrl: "/assets/Rohit.png", 
     animationClass: "animate-fade-in-right",
     isLead: true
   }
@@ -33,7 +33,7 @@ const row2Team = [
     role: "Event Manager",
     bio: "Master of backend infrastructure and scalable cloud deployments.",
     initials: "SE",
-    imageUrl: "/assets/shirin.png",
+    imageUrl: "/assets/Shirin.png",
     animationClass: "animate-fade-in-left",
     isLead: false
   },
@@ -42,7 +42,7 @@ const row2Team = [
     role: "Commmunity Manager",
     bio: "Bridging the gap between pixel-perfect design and complex code.",
     initials: "SK",
-    imageUrl: "/assets/samruddhik.png",
+    imageUrl: "/assets/Samruddhik.png",
     animationClass: "animate-fade-in-up",
     isLead: false
   },
@@ -51,7 +51,7 @@ const row2Team = [
     role: "Lead Designer",
     bio: "Analyzing metrics to optimize the platform's learning algorithms.",
     initials: "PS",
-    imageUrl: "/assets/prachi.png ",
+    imageUrl: "/assets/Prachi.png ",
     animationClass: "animate-fade-in-right",
     isLead: false
   }
@@ -64,7 +64,7 @@ const row3Team = [
     role: "Social Media Manager",
     bio: "Building the ecosystem that connects the top 1% of tech talent.",
     initials: "PP", // Fixed initials from AP to PP
-    imageUrl: "/assets/purva.png",
+    imageUrl: "/assets/Purva.png",
     animationClass: "animate-fade-in-left",
     isLead: false
   },
@@ -73,7 +73,7 @@ const row3Team = [
     role: "Club Executive",
     bio: "Ensuring zero-trust architecture and airtight protocol compliance.",
     initials: "SK",
-    imageUrl: "/assets/sushant.png",
+    imageUrl: "/assets/Sushant.png",
     animationClass: "animate-fade-in-up",
     isLead: false
   },
@@ -82,7 +82,7 @@ const row3Team = [
     role: "Club Executive",
     bio: "Integrating autonomous logic models into core developer workflows.",
     initials: "VS",
-    imageUrl: "/assets/ved.png",
+    imageUrl: "/assets/Ved.png",
     animationClass: "animate-fade-in-right",
     isLead: false
   }
@@ -95,7 +95,7 @@ const row4Team = [
     role: "Club Executive",
     bio: "Automating cloud pipelines for absolute zero downtime infrastructure.",
     initials: "SS",
-    imageUrl: "/assets/samruddhis.png",
+    imageUrl: "/assets/Samruddhis.png",
     animationClass: "animate-fade-in-left",
     isLead: false
   },
@@ -104,7 +104,7 @@ const row4Team = [
     role: "Club Executive",
     bio: "Crafting the distinct narrative and visual identity of the elite ecosystem.",
     initials: "AP",
-    imageUrl: "/assets/aditya.png",
+    imageUrl: "/assets/Aditya.png",
     animationClass: "animate-fade-in-up",
     isLead: false
   },
@@ -114,7 +114,7 @@ const row4Team = [
     role: "Club Executive",
     bio: "Driving strategic partnerships and expanding the developer community.",
     initials: "SM",
-    imageUrl: "/assets/srushti.png",
+    imageUrl: "/assets/Srushti.png",
     animationClass: "animate-fade-in-up",
     isLead: false
   },
@@ -124,7 +124,7 @@ const row4Team = [
     role: "Club Executive",
     bio: "Focused on open-source contributions and algorithmic efficiency.",
     initials: "AP",
-    imageUrl: "/assets/akshay.png",
+    imageUrl: "/assets/Akshay.png",
     animationClass: "animate-fade-in-right",
     isLead: false
   }
