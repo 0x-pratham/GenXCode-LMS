@@ -6,9 +6,9 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 
 /**
  * Premium GenXCode Rubik's Cube
- * - Themed exactly to the brand logo (Deep Violet, Accent Purple, Lilac, Silver)
- * - Highly polished "Crystal / Liquid Metal" glossy finish
- * - Extended, mesmerizing solve logic
+ * - Solves perfectly (colors align on each face)
+ * - Removes deprecated THREE.Clock warning
+ * - Glossy, iridescent luxury glass finish using user's original palette
  */
 export default function PurpleRubiksCube({ size = 520 }) {
   const mountRef = useRef(null);
@@ -22,123 +22,131 @@ export default function PurpleRubiksCube({ size = 520 }) {
     const scene = new THREE.Scene();
     scene.background = null;
 
-    const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
-    camera.position.set(0, 0, 10); 
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
+    camera.position.set(0, 0, 9.5);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2; // Slightly brighter for glassy reflections
+    renderer.toneMappingExposure = 1.15; // Slightly boosted for premium glass reflections
     mount.appendChild(renderer.domElement);
 
-    // ---------- Cinematic Brand Lighting ----------
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    // ---------- Lighting ----------
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     
-    // Main bright highlight
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
-    keyLight.position.set(5, 8, 5);
-    scene.add(keyLight);
+    const key = new THREE.DirectionalLight(0xffffff, 2.2);
+    key.position.set(4, 6, 6);
+    scene.add(key);
     
-    // Deep purple fill to match logo base
-    const fillLight = new THREE.DirectionalLight(0x5F2295, 1.5);
-    fillLight.position.set(-6, -2, 4);
-    scene.add(fillLight);
+    const rim1 = new THREE.DirectionalLight(0xb794f6, 1.6);
+    rim1.position.set(-6, 2, -3);
+    scene.add(rim1);
     
-    // Soft Lilac rim light for glowing edges
-    const rimLight = new THREE.DirectionalLight(0xE2D1FE, 2.0);
-    rimLight.position.set(2, 5, -6);
-    scene.add(rimLight);
+    const rim2 = new THREE.DirectionalLight(0xff9fe0, 1.2);
+    rim2.position.set(3, -5, -4);
+    scene.add(rim2);
 
-    // ---------- Premium Studio Environment (For Glassy Reflections) ----------
+    // ---------- Rainbow studio environment (for luxury reflections) ----------
     const envCanvas = document.createElement("canvas");
     envCanvas.width = 512;
     envCanvas.height = 256;
     const ctx = envCanvas.getContext("2d");
     
     const base = ctx.createLinearGradient(0, 0, 0, 256);
-    base.addColorStop(0, "#0C0224");
-    base.addColorStop(1, "#22044B");
+    base.addColorStop(0, "#140a28");
+    base.addColorStop(0.5, "#1c1038");
+    base.addColorStop(1, "#0a0616");
     ctx.fillStyle = base;
     ctx.fillRect(0, 0, 512, 256);
 
-    // Draw glowing neon spots for the clearcoat to catch
-    function drawGlow(x, y, r, color) {
+    const hueGrad = ctx.createLinearGradient(0, 0, 512, 0);
+    const bands = ["#7c3aed", "#3b82f6", "#22d3ee", "#4ade80", "#facc15", "#fb923c", "#ec4899", "#7c3aed"];
+    bands.forEach((c, i) => hueGrad.addColorStop(i / (bands.length - 1), c));
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = hueGrad;
+    ctx.fillRect(0, 95, 512, 40);
+    ctx.globalAlpha = 1;
+
+    function glowSpot(x, y, r, color, alpha) {
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, color);
       g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = g;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.globalAlpha = 1;
     }
-    drawGlow(128, 64, 120, "rgba(226, 209, 254, 0.8)"); // Lilac glow
-    drawGlow(384, 192, 120, "rgba(134, 56, 205, 0.6)"); // Accent purple glow
-    drawGlow(256, 128, 150, "rgba(255, 255, 255, 0.4)"); // Bright center
+    glowSpot(120, 55, 90, "#ffffff", 0.85);
+    glowSpot(390, 185, 75, "#c4b5fd", 0.6);
+    glowSpot(430, 45, 55, "#67e8f9", 0.5);
 
     const envTex = new THREE.CanvasTexture(envCanvas);
     envTex.mapping = THREE.EquirectangularReflectionMapping;
     envTex.colorSpace = THREE.SRGBColorSpace;
     const pmrem = new THREE.PMREMGenerator(renderer);
-    const envMap = pmrem.fromEquirectangular(envTex).texture;
-    scene.environment = envMap;
+    const envRT = pmrem.fromEquirectangular(envTex);
+    scene.environment = envRT.texture;
     envTex.dispose();
 
-    // ---------- GenXCode Brand Materials ----------
+    // ---------- Premium Glassy Materials & Real Rubik's Logic ----------
     
-    // Core Plastic (Inner skeleton - Deep glossy midnight)
+    // Core of the cube (Dark luxury finish for inner parts)
     const coreMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0C0224, 
-      metalness: 0.6,
+      color: 0x110826, 
+      metalness: 0.7,
       roughness: 0.2,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.1,
       envMapIntensity: 1.5,
     });
 
-    // Outer Face Materials (The Logo Palette)
+    // The user's requested palette for the 6 outer faces
     const faceColors = [
-      0x8638CD, // Right (+x): Accent Purple
-      0xE2D1FE, // Left (-x): Soft Lilac
-      0xFEFFFE, // Top (+y): Bright Silver/White
-      0x5F2295, // Bottom (-y): Primary Purple
-      0x22044B, // Front (+z): Dark Surface Violet
-      0x0C0224, // Back (-z): Midnight Background
+      0x6d28d9, // Right (+x)
+      0x7c3aed, // Left (-x)
+      0x8b5cf6, // Top (+y)
+      0xa78bfa, // Bottom (-y)
+      0xc4b5fd, // Front (+z)
+      0xd946ef  // Back (-z)
     ];
 
-    // High-end Polished Crystal Finish
+    // High-end Polished Glass Finish
     const faceMats = faceColors.map(color => new THREE.MeshPhysicalMaterial({
       color: color,
       metalness: 0.2,
       roughness: 0.1,
-      clearcoat: 1.0, // Maximum gloss
+      clearcoat: 1.0, 
       clearcoatRoughness: 0.05,
-      iridescence: 0.9, // Gives that holographic/premium glass feel
-      iridescenceIOR: 1.5,
-      envMapIntensity: 2.0, // High reflection
+      iridescence: 0.8, // Rainbow sheen
+      iridescenceIOR: 1.4,
+      envMapIntensity: 1.8, 
     }));
 
     // ---------- Build 26 Cubelets ----------
     const group = new THREE.Group();
     scene.add(group);
 
-    // Slightly softer rounded edges for premium feel
-    const geo = new RoundedBoxGeometry(0.95, 0.95, 0.95, 5, 0.08);
-    const gap = 1.0; 
+    const cubeletSize = 0.94;
+    const gap = 1.0;
     const grid = [-1, 0, 1];
     const cubelets = [];
+
+    const geo = new RoundedBoxGeometry(cubeletSize, cubeletSize, cubeletSize, 4, 0.08);
 
     for (const x of grid) {
       for (const y of grid) {
         for (const z of grid) {
-          if (x === 0 && y === 0 && z === 0) continue;
+          if (x === 0 && y === 0 && z === 0) continue; // Skip invisible center core
 
+          // Map materials to faces based on the cubelet's exact position
           const cubeMaterials = [
-            x === 1 ? faceMats[0] : coreMat,
-            x === -1 ? faceMats[1] : coreMat,
-            y === 1 ? faceMats[2] : coreMat,
-            y === -1 ? faceMats[3] : coreMat,
-            z === 1 ? faceMats[4] : coreMat,
-            z === -1 ? faceMats[5] : coreMat,
+            x === 1 ? faceMats[0] : coreMat, // Right
+            x === -1 ? faceMats[1] : coreMat, // Left
+            y === 1 ? faceMats[2] : coreMat, // Top
+            y === -1 ? faceMats[3] : coreMat, // Bottom
+            z === 1 ? faceMats[4] : coreMat, // Front
+            z === -1 ? faceMats[5] : coreMat, // Back
           ];
 
           const cubelet = new THREE.Mesh(geo, cubeMaterials);
@@ -149,14 +157,15 @@ export default function PurpleRubiksCube({ size = 520 }) {
       }
     }
 
-    // ---------- Play Engine: Longer Scramble -> Solve -> Loop ----------
+    // ---------- Play engine: scramble -> pause -> solve -> pause -> loop ----------
     function easeInOutCubic(t) {
       return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
-    const SCRAMBLE_MOVES = 24; // Extended scramble length
-    const PAUSE_SCRAMBLED = 3.0; // Longer pause to admire the mixed state
-    const PAUSE_SOLVED = 4.0; // Longer pause on the perfectly solved logo state
+    // Extended sequence for a more luxurious feel
+    const SCRAMBLE_MOVES = 15; 
+    const PAUSE_SCRAMBLED = 2.0;
+    const PAUSE_SOLVED = 3.0;
 
     const turnState = { active: false };
     const history = [];
@@ -180,8 +189,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
       turnState.turnGroup = turnGroup;
       turnState.layerCubelets = layerCubelets;
       turnState.startTime = t;
-      // Slightly slower, smoother turns
-      turnState.duration = 0.45 + Math.random() * 0.2; 
+      turnState.duration = 0.45 + Math.random() * 0.15; // Smooth turn speed
 
       if (record) history.push({ axis, layer, direction });
     }
@@ -238,6 +246,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
       } else if (phase === "solve") {
         if (history.length > 0) {
           const move = history.pop();
+          // Inverse direction to solve
           beginTurn(move.axis, move.layer, -move.direction, t, false);
         } else {
           phase = "pauseSolved";
@@ -246,8 +255,9 @@ export default function PurpleRubiksCube({ size = 520 }) {
       }
     }
 
-    // ---------- Mouse Interaction & Animation Loop ----------
-    const startTime = performance.now();
+    // ---------- Mouse interaction + Ambient Rotation ----------
+    // FIX: Using performance.now() instead of deprecated THREE.Clock
+    const startTime = performance.now(); 
     const mouse = { x: 0, y: 0 };
     let hovering = false;
     let raf;
@@ -260,48 +270,57 @@ export default function PurpleRubiksCube({ size = 520 }) {
       mouse.y = py * 2 - 1;
     }
     
-    mount.addEventListener("mousemove", onPointerMove);
-    mount.addEventListener("mouseenter", () => (hovering = true));
-    mount.addEventListener("mouseleave", () => {
+    function onEnter() {
+      hovering = true;
+      mount.style.cursor = "grab";
+    }
+    
+    function onLeave() {
       hovering = false;
       mouse.x = 0;
       mouse.y = 0;
-    });
+    }
+    
+    mount.addEventListener("mousemove", onPointerMove);
+    mount.addEventListener("mouseenter", onEnter);
+    mount.addEventListener("mouseleave", onLeave);
+    mount.addEventListener("touchmove", (e) => {
+        if (e.touches[0]) onPointerMove(e.touches[0]);
+    }, { passive: true });
 
-    let curRotX = 0.45;
-    let curRotY = -0.5; 
+    let curRotX = 0.42;
+    let curRotY = 0.6;
     let curScale = 1;
 
     function animate() {
       raf = requestAnimationFrame(animate);
       
+      // Calculate elapsed time in seconds
       const t = (performance.now() - startTime) * 0.001;
 
       updatePlay(t);
 
-      // Slower, heavier ambient floating for a premium feel
-      const autoY = t * 0.1;
-      const autoX = 0.4 + Math.sin(t * 0.2) * 0.1;
-      
-      const targetY = autoY + mouse.x * 0.6;
-      const targetX = autoX + mouse.y * -0.4;
+      const autoY = t * 0.16;
+      const autoX = 0.38 + Math.sin(t * 0.28) * 0.1;
+      const targetY = autoY + mouse.x * 0.5;
+      const targetX = autoX + mouse.y * -0.35;
 
-      curRotX += (targetX - curRotX) * 0.04;
-      curRotY += (targetY - curRotY) * 0.04;
+      curRotX += (targetX - curRotX) * 0.05;
+      curRotY += (targetY - curRotY) * 0.05;
       
       group.rotation.x = curRotX;
       group.rotation.y = curRotY;
-      group.position.y = Math.sin(t * 1.0) * 0.12; 
+      group.position.y = Math.sin(t * 0.5) * 0.12;
 
-      const targetScale = hovering ? 1.06 : 1;
-      curScale += (targetScale - curScale) * 0.06;
+      const targetScale = hovering ? 1.05 : 1;
+      curScale += (targetScale - curScale) * 0.08;
       group.scale.setScalar(curScale);
 
       renderer.render(scene, camera);
     }
     animate();
 
-    // ---------- Resize Handler ----------
+    // ---------- Resize ----------
     const resizeObserver = new ResizeObserver(() => {
       const w = mount.clientWidth;
       const h = mount.clientHeight;
@@ -317,11 +336,15 @@ export default function PurpleRubiksCube({ size = 520 }) {
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
       mount.removeEventListener("mousemove", onPointerMove);
+      mount.removeEventListener("mouseenter", onEnter);
+      mount.removeEventListener("mouseleave", onLeave);
       
-      geo.dispose();
+      cubelets.forEach((c) => {
+        c.geometry.dispose();
+      });
       coreMat.dispose();
       faceMats.forEach(m => m.dispose());
-      envMap.dispose();
+      envRT.texture.dispose();
       pmrem.dispose();
       renderer.dispose();
       
