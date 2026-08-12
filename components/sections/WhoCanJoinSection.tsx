@@ -70,7 +70,6 @@ export function WhoCanJoinSection() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-12 items-start">
           
           {/* ---------------- LEFT SIDE (Shifted Upwards to stay above right cards) ---------------- */}
-          {/* Removed mt-8 and added -mt-4 to pull it up */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center lg:self-start lg:-mt-4">
             
             <div className="relative w-full flex flex-col items-center text-center">
@@ -83,21 +82,24 @@ export function WhoCanJoinSection() {
 
               {/* 
                 Parallax Image wrapper
+                Fixed height/aspect ratio and reduced max-width to make the image slightly smaller.
               */}
-              <div className={`relative w-full max-w-[550px] aspect-square lg:aspect-[4/3] mb-6 ${isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              <div className={`relative w-full max-w-[420px] aspect-square mb-6 ${isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
                 <div 
-                  className="w-full h-full transition-transform duration-700 ease-out"
+                  className="relative w-full h-full transition-transform duration-700 ease-out"
                   style={{ 
                     transform: `translate3d(${mousePos.x}px, ${mousePos.y}px, 0) rotate(${mousePos.x * 0.03}deg)`,
-                    WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 95%)',
-                    maskImage: 'linear-gradient(to bottom, black 60%, transparent 95%)'
+                    // Dual fade mask: fades out at the very top (0-15%) and at the bottom (65-100%)
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 65%, transparent 100%)',
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 65%, transparent 100%)'
                   }}
                 >
                   <Image 
                     src="/assets/whobeongs.png" 
                     alt="Who Belongs Here" 
                     fill 
-                    className="object-contain object-bottom drop-shadow-[0_15px_30px_rgba(134,56,205,0.4)] scale-125"
+                    sizes="(max-width: 768px) 100vw, 420px"
+                    className="object-contain object-bottom drop-shadow-[0_15px_30px_rgba(134,56,205,0.4)]"
                     priority
                   />
                 </div>
@@ -122,7 +124,6 @@ export function WhoCanJoinSection() {
           </div>
 
           {/* ---------------- RIGHT SIDE (Cards) ---------------- */}
-          {/* Added lg:mt-20 to push the cards down, creating the staggered height effect */}
           <div className="lg:col-span-7 flex flex-col gap-6 lg:mt-20">
             {profiles.map((profile, index) => {
               const Icon = profile.icon;
