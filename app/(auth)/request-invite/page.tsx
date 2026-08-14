@@ -214,7 +214,7 @@ export default function RequestInvitePage({
               }}
             >
               <Image
-                src="/assets/invite.png" 
+                src="/assets/Invite.png" 
                 alt="Elite Developer Invite"
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
