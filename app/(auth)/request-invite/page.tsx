@@ -197,20 +197,36 @@ export default function RequestInvitePage({
 
         <div className="relative z-20 flex flex-col items-center max-w-lg w-full">
           
-          {/* Floating 3D Graphic */}
-          <div className="relative w-[350px] h-[350px] xl:w-[450px] xl:h-[450px] mb-8 animate-float-slow animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards">
-            <Image
-              src="/assets/invite.png" 
-              alt="Elite Developer Invite"
-              fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
-              priority
-            />
+          {/* 
+            FIX: Square Box Approach with 4-sided dissolve 
+            Using combined linear gradients to fade Top, Bottom, Left, and Right edges perfectly into the purple background.
+          */}
+          {/* REMOVED mb-8 to bring the image closer to the text below it */}
+          <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards">
+            <div 
+              className="relative w-[350px] h-[350px] xl:w-[450px] xl:h-[450px]"
+              style={{
+                /* Square Mask to smoothly dissolve/fade out all 4 edges */
+                maskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)',
+                maskComposite: 'intersect',
+                WebkitMaskComposite: 'source-in'
+              }}
+            >
+              <Image
+                src="/assets/invite.png" 
+                alt="Elite Developer Invite"
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+                priority
+              />
+            </div>
           </div>
 
           {/* High Impact Pure White Heading */}
-          <h2 className="animate-text-focus-in [animation-delay:500ms] opacity-0 fill-mode-forwards font-heading text-5xl xl:text-6xl font-bold mb-4 bg-silver-gradient bg-clip-text text-transparent drop-shadow-2xl leading-tight">
+          {/* ADDED -mt-6 to pull the heading up towards the masked image */}
+          <h2 className="-mt-6 animate-text-focus-in [animation-delay:500ms] opacity-0 fill-mode-forwards font-heading text-5xl xl:text-6xl font-bold mb-4 bg-silver-gradient bg-clip-text text-transparent drop-shadow-2xl leading-tight">
             Proof of Work <br/>
             Matters.
           </h2>
