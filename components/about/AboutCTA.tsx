@@ -10,18 +10,19 @@ export function AboutCTA() {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
+  // Smooth Intersection Observer with 0.2 threshold to toggle state on scroll in/out without disconnecting
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
+        setIsVisible(entry.isIntersecting);
       },
       { threshold: 0.2 }
     );
 
-    if (sectionRef.current) observer.observe(sectionRef.current);
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
     return () => observer.disconnect();
   }, []);
 
@@ -29,10 +30,10 @@ export function AboutCTA() {
     <section ref={sectionRef} className="relative z-10 w-full py-28 overflow-hidden">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
-        {/* Asymmetrical High-End Stage Panel */}
+        {/* Asymmetrical High-End Stage Panel with Smooth Scroll-In/Out */}
         <div 
-          className={`relative overflow-hidden rounded-[3rem] bg-black/40 backdrop-blur-xl border border-white/10 p-8 md:p-16 lg:p-20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] group transition-all duration-700 hover:border-white/20 ${
-            isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'
+          className={`relative overflow-hidden rounded-[3rem] bg-black/40 backdrop-blur-xl border border-white/10 p-8 md:p-16 lg:p-20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] group transition-all duration-1000 ease-out hover:border-white/20 ${
+            isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-98'
           }`}
         >
           {/* Subtle Inner Highlight for Top Edge */}
@@ -47,11 +48,15 @@ export function AboutCTA() {
           {/* Split Layout Container */}
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* LEFT COLUMN: Badge & Main Heading (Slides in from Left) */}
+            {/* LEFT COLUMN: Badge & Main Heading */}
             <div className="lg:col-span-7 flex flex-col items-start text-left">
               
               {/* Minimalist Editorial Badge */}
-              <div className={`inline-flex items-center gap-3 mb-6 ${isVisible ? 'animate-fade-in-left [animation-delay:200ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              <div 
+                className={`inline-flex items-center gap-3 mb-6 transition-all duration-1000 ease-out delay-150 ${
+                  isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
+                }`}
+              >
                 <span className="w-8 h-[2px] bg-brand-gradient rounded-full"></span>
                 <span className="text-sm font-semibold tracking-widest text-[#E2D1FE] uppercase">
                   Willing to Join?
@@ -59,23 +64,35 @@ export function AboutCTA() {
               </div>
 
               {/* Heading */}
-              <h2 className={`font-heading text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1] ${isVisible ? 'animate-fade-in-left [animation-delay:400ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              <h2 
+                className={`font-heading text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1] transition-all duration-1000 ease-out delay-300 ${
+                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`}
+              >
                 Ready to Build the Future <br />
                 <span className="bg-silver-gradient bg-clip-text text-transparent pb-2">With the Top 1%?</span>
               </h2>
 
             </div>
 
-            {/* RIGHT COLUMN: Description & Action Button (Slides in from Right / Bottom) */}
+            {/* RIGHT COLUMN: Description & Action Button */}
             <div className="lg:col-span-5 flex flex-col items-start lg:items-end text-left lg:text-right justify-center space-y-8">
               
-              {/* Description (Slides in from Right) */}
-              <p className={`max-w-md text-base md:text-lg text-[#E2D1FE]/80 leading-relaxed ${isVisible ? 'animate-fade-in-right [animation-delay:600ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              {/* Description */}
+              <p 
+                className={`max-w-md text-base md:text-lg text-[#E2D1FE]/80 leading-relaxed transition-all duration-1000 ease-out delay-400 ${
+                  isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
+                }`}
+              >
                 GenXCode operates on a strict invite-only protocol. Step inside the ecosystem where execution speaks louder than words.
               </p>
 
-              {/* Action Button (Slides up from Bottom to balance right side) */}
-              <div className={`${isVisible ? 'animate-fade-in-up [animation-delay:800ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              {/* Action Button */}
+              <div 
+                className={`transition-all duration-1000 ease-out delay-500 ${
+                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`}
+              >
                 <Link href={authLinks.requestInvite}>
                   <Button variant="premium" size="lg" className="rounded-full group px-8 h-14 text-base accent-glow-hover shadow-xl">
                     Request Invite

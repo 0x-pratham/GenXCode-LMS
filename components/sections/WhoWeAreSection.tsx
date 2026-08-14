@@ -14,15 +14,13 @@ export function WhoWeAreSection() {
   // State for Cursor Parallax Effect
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // Smooth Intersection Observer to toggle animation on scroll in/out
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
+        setIsVisible(entry.isIntersecting);
       },
-      { threshold: 0.2 } // Trigger when 20% visible
+      { threshold: 0.15 }
     );
 
     if (sectionRef.current) {
@@ -45,16 +43,19 @@ export function WhoWeAreSection() {
     <section 
       ref={sectionRef} 
       onMouseMove={handleMouseMove}
-      className="relative z-10 w-full py-16 sm:py-24 mt-20 lg:mt-32" 
+      // Added overflow-visible here so the character sitting on top never gets clipped
+      className="relative z-10 w-full py-16 sm:py-24 mt-20 lg:mt-32 overflow-visible" 
     >
-      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative overflow-visible">
         
         {/* ================= RELATIVE WRAPPER FOR PERFECT ALIGNMENT ================= */}
-        <div className="relative w-full">
+        <div className="relative w-full overflow-visible">
           
-          {/* CHARACTER SITTING EXACTLY ON THE BORDER */}
+          {/* CHARACTER SITTING EXACTLY ON THE BORDER (Ensured full visibility without cutting) */}
           <div 
-            className={`absolute bottom-full left-6 sm:left-12 lg:left-20 w-48 h-48 md:w-56 md:h-56 lg:w-[280px] lg:h-[280px] z-40 translate-y-[28%] lg:translate-y-[25%] pointer-events-none ${isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'}`}
+            className={`absolute bottom-full left-6 sm:left-12 lg:left-20 w-48 h-48 md:w-56 md:h-56 lg:w-[280px] lg:h-[280px] z-40 translate-y-[28%] lg:translate-y-[25%] pointer-events-none transition-all duration-1000 ease-out ${
+              isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-12'
+            }`}
           >
             <div 
               className="w-full h-full transition-transform duration-300 ease-out"
@@ -76,13 +77,13 @@ export function WhoWeAreSection() {
             </div>
           </div>
 
-          {/* ASYMMETRICAL HIGH-END STAGE PANEL (Adjusted Top & Bottom Padding) */}
+          {/* ASYMMETRICAL HIGH-END STAGE PANEL */}
           <div 
-            className={`relative overflow-hidden rounded-[3rem] bg-black/30 backdrop-blur-xl border border-white/10 px-8 py-10 md:px-16 md:py-12 lg:px-24 lg:py-14 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] transition-all duration-700 ease-out hover:border-white/20 ${
-              isVisible ? 'animate-zoom-fade-in [animation-delay:200ms] opacity-0 fill-mode-forwards' : 'opacity-0'
+            className={`relative overflow-hidden rounded-[3rem] bg-black/30 backdrop-blur-xl border border-white/10 px-8 py-10 md:px-16 md:py-12 lg:px-24 lg:py-14 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] transition-all duration-1000 ease-out hover:border-white/20 ${
+              isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-98 translate-y-10'
             }`}
           >
-            {/* Subtle Inner Highlight for Top Edge (This is the line the character sits on) */}
+            {/* Subtle Inner Highlight for Top Edge */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-60" />
 
             {/* Ambient Inner Glow Aura */}
@@ -102,7 +103,9 @@ export function WhoWeAreSection() {
                 
                 {/* Minimalist Editorial Badge */}
                 <div 
-                  className={`relative z-30 inline-flex items-center gap-3 mb-6 transition-transform duration-700 ease-out pt-6 lg:pt-8 ${isVisible ? 'animate-fade-in-left [animation-delay:400ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}
+                  className={`relative z-30 inline-flex items-center gap-3 mb-6 pt-6 lg:pt-8 transition-all duration-1000 ease-out delay-200 ${
+                    isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
+                  }`}
                   style={{ transform: `translate3d(${mousePos.x * 0.4}px, ${mousePos.y * 0.4}px, 0)` }}
                 >
                   <span className="w-8 h-[2px] bg-brand-gradient rounded-full shadow-[0_0_10px_rgba(134,56,205,0.8)]"></span>
@@ -113,7 +116,9 @@ export function WhoWeAreSection() {
 
                 {/* Heading */}
                 <h2 
-                  className={`relative z-30 font-heading text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1] transition-transform duration-700 ease-out ${isVisible ? 'animate-fade-in-up [animation-delay:600ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}
+                  className={`relative z-30 font-heading text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1] transition-all duration-1000 ease-out delay-300 ${
+                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                  }`}
                   style={{ transform: `translate3d(${mousePos.x * 0.2}px, ${mousePos.y * 0.2}px, 0)` }}
                 >
                   Built by Engineers,<br />
@@ -126,14 +131,18 @@ export function WhoWeAreSection() {
               <div className="lg:col-span-5 flex flex-col items-start lg:items-end text-left lg:text-right justify-center space-y-8 z-30 pt-4 lg:pt-0">
                 
                 {/* Manifesto Description */}
-                <p className={`max-w-md text-base md:text-lg text-[#E2D1FE]/80 leading-relaxed ${isVisible ? 'animate-fade-in-right [animation-delay:800ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+                <p className={`max-w-md text-base md:text-lg text-[#E2D1FE]/80 leading-relaxed transition-all duration-1000 ease-out delay-400 ${
+                  isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10'
+                }`}>
                   {brandConfig.name} was born out of frustration with traditional, slow-moving tech education. We are a collective of senior developers, open-source maintainers, and founders who decided to build the exact platform we wished we had.
                 </p>
 
-                {/* Interactive CTA Button */}
-                <div className={`${isVisible ? 'animate-fade-in-down [animation-delay:1000ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+                {/* Interactive CTA Button - Removed glow shadow/class */}
+                <div className={`transition-all duration-1000 ease-out delay-500 ${
+                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+                }`}>
                   <Link href="/about">
-                    <Button variant="premium" size="lg" className="rounded-full group px-8 h-14 text-base shadow-[0_10px_30px_rgba(134,56,205,0.3)] accent-glow-hover transition-all duration-300">
+                    <Button variant="premium" size="lg" className="rounded-full group px-8 h-14 text-base transition-all duration-300">
                       Discover Our Story
                       <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                     </Button>

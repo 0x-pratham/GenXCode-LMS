@@ -32,15 +32,13 @@ export function WhoCanJoinSection() {
   // State for Cursor Parallax Effect
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // IMPLEMENTED: Observer logic to toggle state on scroll in/out without disconnecting
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
+        setIsVisible(entry.isIntersecting);
       },
-      { threshold: 0.2 } // Trigger when 20% of the section is visible
+      { threshold: 0.15 }
     );
 
     if (sectionRef.current) {
@@ -80,16 +78,12 @@ export function WhoCanJoinSection() {
                 style={{ transform: `translate3d(${-mousePos.x * 2}px, ${-mousePos.y * 2}px, 0)` }}
               />
 
-              {/* 
-                Parallax Image wrapper
-                Fixed height/aspect ratio and reduced max-width to make the image slightly smaller.
-              */}
-              <div className={`relative w-full max-w-[420px] aspect-square mb-6 ${isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              {/* Parallax Image wrapper with smooth transition toggling */}
+              <div className={`relative w-full max-w-[420px] aspect-square mb-6 transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10'}`}>
                 <div 
                   className="relative w-full h-full transition-transform duration-700 ease-out"
                   style={{ 
                     transform: `translate3d(${mousePos.x}px, ${mousePos.y}px, 0) rotate(${mousePos.x * 0.03}deg)`,
-                    // Dual fade mask: fades out at the very top (0-15%) and at the bottom (65-100%)
                     WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 65%, transparent 100%)',
                     maskImage: 'linear-gradient(to bottom, transparent 0%, black 15%, black 65%, transparent 100%)'
                   }}
@@ -105,8 +99,8 @@ export function WhoCanJoinSection() {
                 </div>
               </div>
 
-              {/* Text Content */}
-              <div className={`relative z-10 w-full ${isVisible ? 'animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+              {/* Text Content with smooth scroll-in/out */}
+              <div className={`transition-all duration-1000 ease-out delay-150 w-full ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
                 <div 
                   className="transition-transform duration-700 ease-out"
                   style={{ transform: `translate3d(${mousePos.x * 0.4}px, ${mousePos.y * 0.4}px, 0)` }}
@@ -123,18 +117,21 @@ export function WhoCanJoinSection() {
             </div>
           </div>
 
-          {/* ---------------- RIGHT SIDE (Cards) ---------------- */}
+          {/* ---------------- RIGHT SIDE (Cards with Staggered Scroll Transitions) ---------------- */}
           <div className="lg:col-span-7 flex flex-col gap-6 lg:mt-20">
             {profiles.map((profile, index) => {
               const Icon = profile.icon;
-              // Staggered delay for each row
-              const delayStyle = { animationDelay: `${400 + index * 200}ms` };
+              const transitionDelay = `${200 + index * 150}ms`;
 
               return (
                 <div 
                   key={index}
-                  style={isVisible ? delayStyle : undefined}
-                  className={`group relative flex flex-col sm:flex-row items-start gap-6 p-8 rounded-3xl border border-white/5 bg-black/20 backdrop-blur-md hover:bg-black/40 hover:border-white/10 shadow-xl transition-all duration-500 overflow-hidden ${isVisible ? 'animate-fade-in-right opacity-0 fill-mode-forwards' : 'opacity-0'}`}
+                  className="group relative flex flex-col sm:flex-row items-start gap-6 p-8 rounded-3xl border border-white/5 bg-black/20 backdrop-blur-md hover:bg-black/40 hover:border-white/10 shadow-xl transition-all duration-700 ease-out hover:shadow-[0_15px_40px_rgba(134,56,205,0.25)] overflow-hidden"
+                  style={{ 
+                    transitionDelay,
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(30px) translateY(10px)'
+                  }}
                 >
                   {/* Giant Translucent Background Number */}
                   <div className="absolute -right-4 -bottom-8 font-heading text-[120px] font-bold leading-none text-white/[0.02] group-hover:text-white/[0.04] transition-colors duration-500 pointer-events-none select-none">

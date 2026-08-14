@@ -5,16 +5,18 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 /**
- * Premium GenXCode Rubik's Cube
+ * Premium GenXCode Rubik's Cube (Interactive Edition)
  * - Solves perfectly (colors align on each face)
- * - Removes deprecated THREE.Clock warning
- * - Glossy, iridescent luxury glass finish using user's original palette
+ * - Glossy, iridescent luxury glass finish
+ * - NEW: Drag to rotate, Raycast individual cube hover, Click to turbo-speed, Double-click to pause
  */
 export default function PurpleRubiksCube({ size = 520 }) {
   const mountRef = useRef(null);
 
   useEffect(() => {
     const mount = mountRef.current;
+    if (!mount) return;
+    
     const width = mount.clientWidth || size;
     const height = mount.clientHeight || size;
 
@@ -30,7 +32,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
     renderer.setSize(width, height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15; // Slightly boosted for premium glass reflections
+    renderer.toneMappingExposure = 1.15;
     mount.appendChild(renderer.domElement);
 
     // ---------- Lighting ----------
@@ -53,34 +55,36 @@ export default function PurpleRubiksCube({ size = 520 }) {
     envCanvas.width = 512;
     envCanvas.height = 256;
     const ctx = envCanvas.getContext("2d");
-    
-    const base = ctx.createLinearGradient(0, 0, 0, 256);
-    base.addColorStop(0, "#140a28");
-    base.addColorStop(0.5, "#1c1038");
-    base.addColorStop(1, "#0a0616");
-    ctx.fillStyle = base;
-    ctx.fillRect(0, 0, 512, 256);
+    if (ctx) {
+      const base = ctx.createLinearGradient(0, 0, 0, 256);
+      base.addColorStop(0, "#140a28");
+      base.addColorStop(0.5, "#1c1038");
+      base.addColorStop(1, "#0a0616");
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, 512, 256);
 
-    const hueGrad = ctx.createLinearGradient(0, 0, 512, 0);
-    const bands = ["#7c3aed", "#3b82f6", "#22d3ee", "#4ade80", "#facc15", "#fb923c", "#ec4899", "#7c3aed"];
-    bands.forEach((c, i) => hueGrad.addColorStop(i / (bands.length - 1), c));
-    ctx.globalAlpha = 0.45;
-    ctx.fillStyle = hueGrad;
-    ctx.fillRect(0, 95, 512, 40);
-    ctx.globalAlpha = 1;
-
-    function glowSpot(x, y, r, color, alpha) {
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, color);
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      const hueGrad = ctx.createLinearGradient(0, 0, 512, 0);
+      const bands = ["#7c3aed", "#3b82f6", "#22d3ee", "#4ade80", "#facc15", "#fb923c", "#ec4899", "#7c3aed"];
+      bands.forEach((c, i) => hueGrad.addColorStop(i / (bands.length - 1), c));
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = hueGrad;
+      ctx.fillRect(0, 95, 512, 40);
       ctx.globalAlpha = 1;
+
+      // Type annotations removed here
+      const glowSpot = (x, y, r, color, alpha) => {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, color);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = g;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+        ctx.globalAlpha = 1;
+      };
+      glowSpot(120, 55, 90, "#ffffff", 0.85);
+      glowSpot(390, 185, 75, "#c4b5fd", 0.6);
+      glowSpot(430, 45, 55, "#67e8f9", 0.5);
     }
-    glowSpot(120, 55, 90, "#ffffff", 0.85);
-    glowSpot(390, 185, 75, "#c4b5fd", 0.6);
-    glowSpot(430, 45, 55, "#67e8f9", 0.5);
 
     const envTex = new THREE.CanvasTexture(envCanvas);
     envTex.mapping = THREE.EquirectangularReflectionMapping;
@@ -90,9 +94,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
     scene.environment = envRT.texture;
     envTex.dispose();
 
-    // ---------- Premium Glassy Materials & Real Rubik's Logic ----------
-    
-    // Core of the cube (Dark luxury finish for inner parts)
+    // ---------- Premium Glassy Materials ----------
     const coreMat = new THREE.MeshPhysicalMaterial({
       color: 0x110826, 
       metalness: 0.7,
@@ -101,7 +103,6 @@ export default function PurpleRubiksCube({ size = 520 }) {
       envMapIntensity: 1.5,
     });
 
-    // The user's requested palette for the 6 outer faces
     const faceColors = [
       0x6d28d9, // Right (+x)
       0x7c3aed, // Left (-x)
@@ -111,14 +112,13 @@ export default function PurpleRubiksCube({ size = 520 }) {
       0xd946ef  // Back (-z)
     ];
 
-    // High-end Polished Glass Finish
     const faceMats = faceColors.map(color => new THREE.MeshPhysicalMaterial({
       color: color,
       metalness: 0.2,
       roughness: 0.1,
       clearcoat: 1.0, 
       clearcoatRoughness: 0.05,
-      iridescence: 0.8, // Rainbow sheen
+      iridescence: 0.8, 
       iridescenceIOR: 1.4,
       envMapIntensity: 1.8, 
     }));
@@ -130,6 +130,8 @@ export default function PurpleRubiksCube({ size = 520 }) {
     const cubeletSize = 0.94;
     const gap = 1.0;
     const grid = [-1, 0, 1];
+    
+    // Type annotation removed
     const cubelets = [];
 
     const geo = new RoundedBoxGeometry(cubeletSize, cubeletSize, cubeletSize, 4, 0.08);
@@ -137,16 +139,15 @@ export default function PurpleRubiksCube({ size = 520 }) {
     for (const x of grid) {
       for (const y of grid) {
         for (const z of grid) {
-          if (x === 0 && y === 0 && z === 0) continue; // Skip invisible center core
+          if (x === 0 && y === 0 && z === 0) continue; 
 
-          // Map materials to faces based on the cubelet's exact position
           const cubeMaterials = [
-            x === 1 ? faceMats[0] : coreMat, // Right
-            x === -1 ? faceMats[1] : coreMat, // Left
-            y === 1 ? faceMats[2] : coreMat, // Top
-            y === -1 ? faceMats[3] : coreMat, // Bottom
-            z === 1 ? faceMats[4] : coreMat, // Front
-            z === -1 ? faceMats[5] : coreMat, // Back
+            x === 1 ? faceMats[0] : coreMat,
+            x === -1 ? faceMats[1] : coreMat,
+            y === 1 ? faceMats[2] : coreMat,
+            y === -1 ? faceMats[3] : coreMat,
+            z === 1 ? faceMats[4] : coreMat,
+            z === -1 ? faceMats[5] : coreMat,
           ];
 
           const cubelet = new THREE.Mesh(geo, cubeMaterials);
@@ -162,12 +163,22 @@ export default function PurpleRubiksCube({ size = 520 }) {
       return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
-    // Extended sequence for a more luxurious feel
     const SCRAMBLE_MOVES = 15; 
     const PAUSE_SCRAMBLED = 2.0;
     const PAUSE_SOLVED = 3.0;
 
-    const turnState = { active: false };
+    // Type annotations removed
+    const turnState = { 
+        active: false, 
+        axis: 'x', 
+        direction: 1, 
+        layer: 0, 
+        turnGroup: new THREE.Group(), 
+        layerCubelets: [], 
+        startTime: 0, 
+        duration: 0.5 
+    };
+    
     const history = [];
     let phase = "pauseSolved";
     let phaseStart = 0;
@@ -189,7 +200,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
       turnState.turnGroup = turnGroup;
       turnState.layerCubelets = layerCubelets;
       turnState.startTime = t;
-      turnState.duration = 0.45 + Math.random() * 0.15; // Smooth turn speed
+      turnState.duration = 0.45 + Math.random() * 0.15; 
 
       if (record) history.push({ axis, layer, direction });
     }
@@ -245,8 +256,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
         }
       } else if (phase === "solve") {
         if (history.length > 0) {
-          const move = history.pop();
-          // Inverse direction to solve
+          const move = history.pop(); // Non-null assertion removed
           beginTurn(move.axis, move.layer, -move.direction, t, false);
         } else {
           phase = "pauseSolved";
@@ -255,63 +265,153 @@ export default function PurpleRubiksCube({ size = 520 }) {
       }
     }
 
-    // ---------- Mouse interaction + Ambient Rotation ----------
-    // FIX: Using performance.now() instead of deprecated THREE.Clock
-    const startTime = performance.now(); 
+    // ---------- INTERACTIVE EVENTS LOGIC ----------
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2(-2, -2); // Out of view initially
     const mouse = { x: 0, y: 0 };
+    
+    let isDragging = false;
+    let dragDistance = 0;
+    let lastPointer = { x: 0, y: 0 };
+    let manualRotX = 0.42;
+    let manualRotY = 0.6;
+    let timeSinceLastInteraction = 0;
+    
     let hovering = false;
-    let raf;
+    let speedMultiplier = 1;
+    let isAlgorithmPaused = false;
+
+    // Pointer Events for Drag & Raycast
+    function onPointerDown(e) {
+      isDragging = true;
+      dragDistance = 0;
+      lastPointer = { x: e.clientX, y: e.clientY };
+      mount.style.cursor = "grabbing";
+      timeSinceLastInteraction = 0;
+    }
+
+    function onPointerUp() {
+      isDragging = false;
+      mount.style.cursor = hovering ? "grab" : "default";
+      timeSinceLastInteraction = 0;
+    }
 
     function onPointerMove(e) {
       const rect = mount.getBoundingClientRect();
       const px = (e.clientX - rect.left) / rect.width;
       const py = (e.clientY - rect.top) / rect.height;
+      
+      // Standard mouse for sway
       mouse.x = px * 2 - 1;
       mouse.y = py * 2 - 1;
+      
+      // NDC for Raycaster
+      pointerNDC.x = px * 2 - 1;
+      pointerNDC.y = -(py * 2 - 1);
+
+      if (isDragging) {
+        const dx = e.clientX - lastPointer.x;
+        const dy = e.clientY - lastPointer.y;
+        dragDistance += Math.abs(dx) + Math.abs(dy);
+        
+        manualRotY += dx * 0.006;
+        manualRotX += dy * 0.006;
+        lastPointer = { x: e.clientX, y: e.clientY };
+        timeSinceLastInteraction = 0;
+      }
     }
-    
+
+    // Click for Speed Boost
+    function onClick() {
+      if (dragDistance < 5) { // Ensure it was a tap, not a drag
+        speedMultiplier = 4.0; // 4x Turbo Mode!
+        setTimeout(() => { speedMultiplier = 1.0; }, 800);
+      }
+    }
+
+    // Double Click to Pause
+    function onDblClick() {
+      isAlgorithmPaused = !isAlgorithmPaused;
+    }
+
     function onEnter() {
       hovering = true;
-      mount.style.cursor = "grab";
+      mount.style.cursor = isDragging ? "grabbing" : "grab";
     }
-    
+
     function onLeave() {
       hovering = false;
+      isDragging = false;
       mouse.x = 0;
       mouse.y = 0;
+      pointerNDC.set(-2, -2);
     }
-    
-    mount.addEventListener("mousemove", onPointerMove);
+
+    mount.addEventListener("pointerdown", onPointerDown);
+    mount.addEventListener("pointerup", onPointerUp);
+    mount.addEventListener("pointermove", onPointerMove);
+    mount.addEventListener("click", onClick);
+    mount.addEventListener("dblclick", onDblClick);
     mount.addEventListener("mouseenter", onEnter);
     mount.addEventListener("mouseleave", onLeave);
-    mount.addEventListener("touchmove", (e) => {
-        if (e.touches[0]) onPointerMove(e.touches[0]);
-    }, { passive: true });
 
-    let curRotX = 0.42;
-    let curRotY = 0.6;
+    // ---------- Animation Loop ----------
+    let raf;
+    let curRotX = manualRotX;
+    let curRotY = manualRotY;
     let curScale = 1;
+    
+    let lastTime = performance.now();
+    let gameTime = 0;
 
     function animate() {
       raf = requestAnimationFrame(animate);
       
-      // Calculate elapsed time in seconds
-      const t = (performance.now() - startTime) * 0.001;
+      const now = performance.now();
+      const dt = (now - lastTime) * 0.001;
+      lastTime = now;
 
-      updatePlay(t);
+      // Only run Rubik logic if not paused
+      if (!isAlgorithmPaused) {
+        gameTime += dt * speedMultiplier;
+        updatePlay(gameTime);
+      }
 
-      const autoY = t * 0.16;
-      const autoX = 0.38 + Math.sin(t * 0.28) * 0.1;
-      const targetY = autoY + mouse.x * 0.5;
-      const targetX = autoX + mouse.y * -0.35;
+      // Resume auto-rotation if idle for 3 seconds
+      if (!isDragging) {
+        timeSinceLastInteraction += dt;
+      }
+      if (timeSinceLastInteraction > 3) {
+        manualRotY += dt * 0.15; // Slow ambient spin
+      }
 
-      curRotX += (targetX - curRotX) * 0.05;
-      curRotY += (targetY - curRotY) * 0.05;
+      // Blend manual drag rotation with subtle mouse follow sway
+      const targetY = manualRotY + (!isDragging ? mouse.x * 0.2 : 0);
+      const targetX = manualRotX + (!isDragging ? mouse.y * -0.2 : 0);
+
+      curRotX += (targetX - curRotX) * 0.1;
+      curRotY += (targetY - curRotY) * 0.1;
       
       group.rotation.x = curRotX;
       group.rotation.y = curRotY;
-      group.position.y = Math.sin(t * 0.5) * 0.12;
+      group.position.y = Math.sin(now * 0.001 * 0.5) * 0.12; // Floating effect
 
+      // Interactive Raycast: Make hovered cubelet pop out
+      raycaster.setFromCamera(pointerNDC, camera);
+      const intersects = raycaster.intersectObjects(cubelets);
+      let hoveredCubelet = null;
+      
+      if (intersects.length > 0 && !isDragging) {
+        hoveredCubelet = intersects[0].object;
+      }
+
+      cubelets.forEach((c) => {
+        const targetS = (c === hoveredCubelet) ? 1.15 : 1.0;
+        const currentS = c.scale.x;
+        c.scale.setScalar(currentS + (targetS - currentS) * 0.2);
+      });
+
+      // Overall group scale on container hover
       const targetScale = hovering ? 1.05 : 1;
       curScale += (targetScale - curScale) * 0.08;
       group.scale.setScalar(curScale);
@@ -335,7 +435,11 @@ export default function PurpleRubiksCube({ size = 520 }) {
     return () => {
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();
-      mount.removeEventListener("mousemove", onPointerMove);
+      mount.removeEventListener("pointerdown", onPointerDown);
+      mount.removeEventListener("pointerup", onPointerUp);
+      mount.removeEventListener("pointermove", onPointerMove);
+      mount.removeEventListener("click", onClick);
+      mount.removeEventListener("dblclick", onDblClick);
       mount.removeEventListener("mouseenter", onEnter);
       mount.removeEventListener("mouseleave", onLeave);
       
@@ -361,7 +465,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
         width: "100%",
         height: "100%",
         minHeight: size,
-        cursor: "grab",
+        touchAction: "none" // Prevents page scroll while rotating on mobile
       }}
     />
   );

@@ -10,32 +10,28 @@ const features = [
     icon: Code2,
     title: "Elite Cohorts",
     description: "Learn and build alongside a strictly curated community of top-tier developers. No noise, just high-signal collaboration.",
-    positionClass: "top-[2%] -left-[2%] xl:left-[2%]", // Pushed further out to avoid overlap
-    animationClass: "animate-fade-in-left",
+    positionClass: "top-[2%] -left-[2%] xl:left-[2%]",
     floatDelay: "0s"
   },
   {
     icon: Trophy,
     title: "Exclusive Hackathons",
     description: "Compete in high-stakes challenges. Prove your skills on the leaderboard and win exclusive tech bounties.",
-    positionClass: "top-[2%] -right-[2%] xl:right-[2%]", // Pushed further out
-    animationClass: "animate-fade-in-right",
+    positionClass: "top-[2%] -right-[2%] xl:right-[2%]",
     floatDelay: "2s"
   },
   {
     icon: ShieldCheck,
     title: "Verified Proof of Work",
     description: "Build a persistent, verifiable portfolio that speaks louder than standard resumes. Show them exactly what you can code.",
-    positionClass: "bottom-[5%] -left-[2%] xl:left-[2%]", // Pushed further out
-    animationClass: "animate-fade-in-left",
+    positionClass: "bottom-[5%] -left-[2%] xl:left-[2%]",
     floatDelay: "1s"
   },
   {
     icon: Rocket,
     title: "Career Acceleration",
     description: "Direct exposure to top tech recruiters and fast-tracked interviews based on your platform proof-of-work.",
-    positionClass: "bottom-[5%] -right-[2%] xl:right-[2%]", // Pushed further out
-    animationClass: "animate-fade-in-right",
+    positionClass: "bottom-[5%] -right-[2%] xl:right-[2%]",
     floatDelay: "3s"
   }
 ];
@@ -47,15 +43,13 @@ export function WhyJoinSection() {
   // State for Cursor Parallax Effect
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  // Smooth Intersection Observer to toggle state on scroll in/out
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
+        setIsVisible(entry.isIntersecting);
       },
-      { threshold: 0.1 }
+      { threshold: 0.15 }
     );
 
     if (sectionRef.current) {
@@ -78,13 +72,11 @@ export function WhyJoinSection() {
     <section 
       ref={sectionRef} 
       onMouseMove={handleMouseMove}
-      // REDUCED PADDING: from py-20 sm:py-32 to py-12 sm:py-20
       className="relative z-10 w-full py-12 sm:py-20 overflow-hidden"
     >
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* ================= DESKTOP VIEW (Orbital / Circular Layout) ================= */}
-        {/* REDUCED MIN-HEIGHT: from 850px to 650px/700px to tighten top & bottom gaps */}
         <div className="hidden lg:block relative w-full min-h-[650px] xl:min-h-[700px]">
           
           {/* ----- CENTER CORE (Made Smaller & Tighter) ----- */}
@@ -96,12 +88,12 @@ export function WhyJoinSection() {
               style={{ transform: `translate3d(${-mousePos.x * 2}px, ${-mousePos.y * 2}px, 0)` }}
             />
 
-            {/* Dual Linear Masking: Keeps box shape but fades all 4 edges */}
-            <div className={`relative w-full aspect-square mb-4 ${isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+            {/* Dual Linear Masking: Keeps box shape but fades all 4 edges with smooth re-triggerable transitions */}
+            <div className={`relative w-full aspect-square mb-4 transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-12'}`}>
               
               {/* Vertical Fade Wrapper (Top & Bottom) */}
               <div 
-                className="w-full h-full transition-transform duration-700 ease-out"
+                className="relative w-full h-full transition-transform duration-700 ease-out"
                 style={{ 
                   transform: `translate3d(${mousePos.x}px, ${mousePos.y}px, 0) rotate(${mousePos.x * 0.03}deg)`,
                   WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 70%, transparent 100%)',
@@ -110,7 +102,7 @@ export function WhyJoinSection() {
               >
                 {/* Horizontal Fade Wrapper (Left & Right) */}
                 <div 
-                  className="w-full h-full"
+                  className="relative w-full h-full"
                   style={{
                     WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)',
                     maskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)'
@@ -130,7 +122,7 @@ export function WhyJoinSection() {
 
             {/* Center Text with Silver Gradient */}
             <div 
-              className={`transition-transform duration-700 ease-out text-center ${isVisible ? 'animate-fade-in-up [animation-delay:400ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}
+              className={`transition-all duration-1000 ease-out text-center delay-150 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'}`}
               style={{ transform: `translate3d(${mousePos.x * 0.4}px, ${mousePos.y * 0.4}px, 0)` }}
             >
               <h2 className="font-heading text-4xl lg:text-5xl font-bold tracking-tight mb-4 bg-silver-gradient bg-clip-text text-transparent pb-2 drop-shadow-xl">
@@ -142,31 +134,35 @@ export function WhyJoinSection() {
             </div>
           </div>
 
-          {/* ----- THE 4 ORBITING CARDS (Darker, Blurred Glass) ----- */}
+          {/* ----- THE 4 ORBITING CARDS (Flashy, Blurry, Transparent Glass) ----- */}
           {features.map((feature, index) => {
             const Icon = feature.icon;
-            const delayStyle = { animationDelay: `${600 + index * 150}ms` };
+            const transitionDelay = `${200 + index * 120}ms`;
 
             return (
               <div 
                 key={index}
-                style={isVisible ? delayStyle : undefined}
-                className={`absolute ${feature.positionClass} z-30 w-[300px] xl:w-[340px] ${isVisible ? `${feature.animationClass} opacity-0 fill-mode-forwards` : 'opacity-0'}`}
+                className={`absolute ${feature.positionClass} z-30 w-[300px] xl:w-[340px] transition-all duration-1000 ease-out`}
+                style={{ 
+                  transitionDelay,
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.95)'
+                }}
               >
                 <div 
-                  className="animate-float-slow group relative flex flex-col p-8 rounded-3xl bg-black/60 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] transition-all duration-500 hover:bg-black/80 hover:border-white/20 hover:scale-105 hover:shadow-[0_15px_40px_rgba(134,56,205,0.3)]"
+                  className="animate-float-slow group relative flex flex-col p-8 rounded-3xl bg-white/[0.04] backdrop-blur-2xl border border-white/15 shadow-[0_8px_32px_rgba(134,56,205,0.15)] transition-all duration-500 hover:bg-white/[0.08] hover:border-white/25 hover:scale-105 hover:shadow-[0_15px_40px_rgba(134,56,205,0.35)]"
                   style={{ animationDelay: feature.floatDelay }}
                 >
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                  <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 border border-white/10 group-hover:border-accent/40 group-hover:shadow-[0_0_20px_rgba(134,56,205,0.3)] transition-all duration-300">
+                  <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 border border-white/15 group-hover:border-accent/50 group-hover:shadow-[0_0_20px_rgba(134,56,205,0.4)] transition-all duration-300">
                     <Icon className="h-6 w-6 text-[#E2D1FE] group-hover:text-white transition-colors" />
                   </div>
 
                   <h3 className="font-heading text-lg xl:text-xl font-bold text-foreground mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-[#E2D1FE]/60 leading-relaxed text-xs xl:text-sm">
+                  <p className="text-[#E2D1FE]/70 leading-relaxed text-xs xl:text-sm">
                     {feature.description}
                   </p>
                 </div>
@@ -183,14 +179,14 @@ export function WhyJoinSection() {
             
             {/* Mobile Dual Linear Masking */}
             <div 
-              className={`relative w-full max-w-[280px] aspect-square mb-6 ${isVisible ? 'animate-zoom-fade-in opacity-0 fill-mode-forwards' : 'opacity-0'}`}
+              className={`relative w-full max-w-[280px] aspect-square mb-6 transition-all duration-1000 ease-out ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10'}`}
               style={{ 
                 WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 70%, transparent 100%)', 
                 maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 70%, transparent 100%)' 
               }}
             >
               <div 
-                className="w-full h-full"
+                className="relative w-full h-full"
                 style={{
                   WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)',
                   maskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%)'
@@ -206,7 +202,7 @@ export function WhyJoinSection() {
               </div>
             </div>
             
-            <div className={`${isVisible ? 'animate-fade-in-up [animation-delay:400ms]' : 'opacity-0'} fill-mode-forwards`}>
+            <div className={`transition-all duration-1000 ease-out delay-150 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
               <h2 className="font-heading text-3xl md:text-5xl font-bold tracking-tight mb-4 bg-silver-gradient bg-clip-text text-transparent pb-2">
                 Why Join {brandConfig.name}?
               </h2>
@@ -219,21 +215,25 @@ export function WhyJoinSection() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
             {features.map((feature, index) => {
               const Icon = feature.icon;
-              const delayStyle = { animationDelay: `${500 + index * 150}ms` };
+              const transitionDelay = `${300 + index * 120}ms`;
 
               return (
                 <div 
                   key={index}
-                  style={isVisible ? delayStyle : undefined}
-                  className={`${isVisible ? 'animate-fade-in-up' : 'opacity-0'} fill-mode-forwards group relative flex flex-col p-6 rounded-3xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.6)] transition-all duration-500 hover:bg-black/80 hover:border-white/20`}
+                  className="group relative flex flex-col p-6 rounded-3xl bg-white/[0.04] backdrop-blur-xl border border-white/15 shadow-[0_8px_32px_rgba(134,56,205,0.15)] transition-all duration-700 ease-out hover:bg-white/[0.08] hover:border-white/25"
+                  style={{ 
+                    transitionDelay,
+                    opacity: isVisible ? 1 : 0,
+                    transform: isVisible ? 'translateY(0)' : 'translateY(25px)'
+                  }}
                 >
-                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 border border-white/10 group-hover:border-accent/40 group-hover:bg-brand-gradient transition-all duration-300">
+                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 border border-white/15 group-hover:border-accent/50 group-hover:bg-brand-gradient transition-all duration-300">
                     <Icon className="h-5 w-5 text-[#E2D1FE] group-hover:text-white transition-colors" />
                   </div>
                   <h3 className="font-heading text-lg font-bold text-foreground mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-[#E2D1FE]/60 leading-relaxed text-xs sm:text-sm">
+                  <p className="text-[#E2D1FE]/70 leading-relaxed text-xs sm:text-sm">
                     {feature.description}
                   </p>
                 </div>

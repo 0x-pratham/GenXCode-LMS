@@ -9,6 +9,7 @@ import {
   Newspaper,
   ImageIcon,
   UserCircle,
+  HelpCircle // Added icon for Quizzes
 } from "lucide-react";
 
 export const portalLinks = [
@@ -26,6 +27,11 @@ export const portalLinks = [
     title: "Challenges",
     href: "/challenges",
     icon: Swords,
+  },
+  {
+    title: "Quizzes",
+    href: "/quizzes",
+    icon: HelpCircle,
   },
   {
     title: "Live Classes",

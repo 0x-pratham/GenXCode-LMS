@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 
 // ---------------- TEAM DATA (Hierarchy: 2, 3, 3, 4) ---------------- //
 
-// ROW 1 (2 Cards - Founders/Leads)
 const row1Team = [
   {
     name: "Prathamesh Bhil",
@@ -12,7 +11,6 @@ const row1Team = [
     bio: "Ex-Staff Engineer. Obsessed with high-performance systems and zero-latency UI.",
     initials: "PB",
     imageUrl: "/assets/Prathamesh1.png", 
-    animationClass: "animate-fade-in-left",
     isLead: true
   },
   {
@@ -21,12 +19,10 @@ const row1Team = [
     bio: "Visionary designer turning complex developer workflows into frictionless experiences.",
     initials: "RY",
     imageUrl: "/assets/Rohit.png", 
-    animationClass: "animate-fade-in-right",
     isLead: true
   }
 ];
 
-// ROW 2 (3 Cards)
 const row2Team = [
   {
     name: "Shirin Ekatpure",
@@ -34,7 +30,6 @@ const row2Team = [
     bio: "Master of backend infrastructure and scalable cloud deployments.",
     initials: "SE",
     imageUrl: "/assets/Shirin.png",
-    animationClass: "animate-fade-in-left",
     isLead: false
   },
   {
@@ -43,7 +38,6 @@ const row2Team = [
     bio: "Bridging the gap between pixel-perfect design and complex code.",
     initials: "SK",
     imageUrl: "/assets/Samruddhik.png",
-    animationClass: "animate-fade-in-up",
     isLead: false
   },
   {
@@ -52,20 +46,17 @@ const row2Team = [
     bio: "Analyzing metrics to optimize the platform's learning algorithms.",
     initials: "PS",
     imageUrl: "/assets/Prachi.png ",
-    animationClass: "animate-fade-in-right",
     isLead: false
   }
 ];
 
-// ROW 3 (3 Cards)
 const row3Team = [
   {
     name: "Purva Patil",
     role: "Social Media Manager",
     bio: "Building the ecosystem that connects the top 1% of tech talent.",
-    initials: "PP", // Fixed initials from AP to PP
+    initials: "PP", 
     imageUrl: "/assets/Purva.png",
-    animationClass: "animate-fade-in-left",
     isLead: false
   },
   {
@@ -74,7 +65,6 @@ const row3Team = [
     bio: "Ensuring zero-trust architecture and airtight protocol compliance.",
     initials: "SK",
     imageUrl: "/assets/Sushant.png",
-    animationClass: "animate-fade-in-up",
     isLead: false
   },
   {
@@ -83,12 +73,10 @@ const row3Team = [
     bio: "Integrating autonomous logic models into core developer workflows.",
     initials: "VS",
     imageUrl: "/assets/Ved.png",
-    animationClass: "animate-fade-in-right",
     isLead: false
   }
 ];
 
-// ROW 4 (4 Cards)
 const row4Team = [
   {
     name: "Samruddhi Shelke",
@@ -96,7 +84,6 @@ const row4Team = [
     bio: "Automating cloud pipelines for absolute zero downtime infrastructure.",
     initials: "SS",
     imageUrl: "/assets/Samruddhis.png",
-    animationClass: "animate-fade-in-left",
     isLead: false
   },
   {
@@ -105,55 +92,72 @@ const row4Team = [
     bio: "Crafting the distinct narrative and visual identity of the elite ecosystem.",
     initials: "AP",
     imageUrl: "/assets/Aditya.png",
-    animationClass: "animate-fade-in-up",
     isLead: false
   },
-  // NEW PLACEHOLDER CARD 1
   {
     name: "Srushti More",
     role: "Club Executive",
     bio: "Driving strategic partnerships and expanding the developer community.",
     initials: "SM",
     imageUrl: "/assets/Srushti.png",
-    animationClass: "animate-fade-in-up",
     isLead: false
   },
-  // NEW PLACEHOLDER CARD 2
   {
     name: "Akshay Pillai",
     role: "Club Executive",
     bio: "Focused on open-source contributions and algorithmic efficiency.",
     initials: "AP",
     imageUrl: "/assets/Akshay.png",
-    animationClass: "animate-fade-in-right",
     isLead: false
   }
 ];
 
 export function CreativeMinds() {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const [headerVisible, setHeaderVisible] = useState(false);
+  const [row1Visible, setRow1Visible] = useState(false);
+  const [row2Visible, setRow2Visible] = useState(false);
+  const [row3Visible, setRow3Visible] = useState(false);
+  const [row4Visible, setRow4Visible] = useState(false);
 
+  const headerRef = useRef<HTMLDivElement>(null);
+  const row1Ref = useRef<HTMLDivElement>(null);
+  const row2Ref = useRef<HTMLDivElement>(null);
+  const row3Ref = useRef<HTMLDivElement>(null);
+  const row4Ref = useRef<HTMLDivElement>(null);
+
+  // Separate smooth observers for header and each row to achieve smooth staggered cascading
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
+    const createObserver = (setter: (val: boolean) => void) => {
+      return new IntersectionObserver(
+        ([entry]) => {
+          setter(entry.isIntersecting);
+        },
+        { threshold: 0.15 }
+      );
+    };
 
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
+    const headerObs = createObserver(setHeaderVisible);
+    const row1Obs = createObserver(setRow1Visible);
+    const row2Obs = createObserver(setRow2Visible);
+    const row3Obs = createObserver(setRow3Visible);
+    const row4Obs = createObserver(setRow4Visible);
+
+    if (headerRef.current) headerObs.observe(headerRef.current);
+    if (row1Ref.current) row1Obs.observe(row1Ref.current);
+    if (row2Ref.current) row2Obs.observe(row2Ref.current);
+    if (row3Ref.current) row3Obs.observe(row3Ref.current);
+    if (row4Ref.current) row4Obs.observe(row4Ref.current);
+
+    return () => {
+      headerObs.disconnect();
+      row1Obs.disconnect();
+      row2Obs.disconnect();
+      row3Obs.disconnect();
+      row4Obs.disconnect();
+    };
   }, []);
 
-  // Pass itemsPerRow to dynamically adjust width based on row size
-  const renderCard = (member: any, index: number, rowBaseDelay: number, itemsPerRow: number) => {
-    const delayStyle = { animationDelay: `${rowBaseDelay + index * 150}ms` };
-
-    // Dynamic width calculation based on how many items are in the row
+  const renderCard = (member: any, index: number, itemsPerRow: number, isRowVisible: boolean) => {
     let cardWidthClass = "";
     if (member.isLead) {
       cardWidthClass = "w-full md:w-[calc(50%-1.5rem)] lg:w-[calc(44%-1.5rem)] p-10 lg:p-12";
@@ -168,10 +172,12 @@ export function CreativeMinds() {
     return (
       <div 
         key={index}
-        style={isVisible ? delayStyle : undefined}
-        className={`group relative flex flex-col items-center text-center rounded-[2rem] bg-black/20 backdrop-blur-md border border-white/5 shadow-xl transition-all duration-500 hover:bg-black/40 hover:border-white/10 hover:-translate-y-2 hover:shadow-[0_12px_40px_rgba(134,56,205,0.2)] overflow-hidden ${cardWidthClass} ${
-          isVisible ? `${member.animationClass} opacity-0 fill-mode-forwards` : 'opacity-0'
+        className={`group relative flex flex-col items-center text-center rounded-[2rem] bg-black/20 backdrop-blur-md border border-white/5 shadow-xl transition-all duration-700 ease-out hover:bg-black/40 hover:border-white/10 hover:-translate-y-2 hover:shadow-[0_12px_40px_rgba(134,56,205,0.2)] overflow-hidden ${cardWidthClass} ${
+          isRowVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'
         }`}
+        style={{
+          transitionDelay: `${index * 100}ms`
+        }}
       >
         {/* Ambient Hover Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150px] h-[150px] bg-brand-gradient opacity-0 group-hover:opacity-30 blur-[50px] rounded-full transition-opacity duration-700 pointer-events-none"></div>
@@ -181,13 +187,17 @@ export function CreativeMinds() {
 
         {/* 3:4 Aspect Ratio Photo Space */}
         <div className={`relative aspect-[3/4] ${photoMaxWidth} mb-6 rounded-2xl flex items-center justify-center bg-white/[0.03] border border-white/10 group-hover:border-accent/50 transition-all duration-500 overflow-hidden`}>
-          {/* Conditionally render Image OR Initials */}
           {member.imageUrl ? (
             <img 
               src={member.imageUrl} 
               alt={member.name} 
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
-              loading="lazy"
+              className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110 opacity-100"
+              style={{
+                imageRendering: "auto",
+                backfaceVisibility: "hidden"
+              }}
+              loading="eager"
+              decoding="async"
             />
           ) : (
             <span className={`font-heading font-bold text-transparent bg-silver-gradient bg-clip-text ${member.isLead ? 'text-4xl lg:text-5xl' : 'text-3xl'}`}>
@@ -201,15 +211,13 @@ export function CreativeMinds() {
         <p className={`font-medium tracking-wide text-accent mb-4 uppercase ${member.isLead ? 'text-sm lg:text-base' : 'text-xs lg:text-sm'}`}>{member.role}</p>
         <p className={`text-[#E2D1FE]/70 leading-relaxed mb-6 ${member.isLead ? 'text-base lg:text-lg' : 'text-sm lg:text-base'}`}>{member.bio}</p>
 
-        {/* Socials - Strictly GitHub and LinkedIn Icons Only */}
+        {/* Socials */}
         <div className="flex gap-4 mt-auto">
-          {/* GitHub Icon */}
           <a href="#" className="text-[#E2D1FE]/50 hover:text-white transition-colors relative z-10" aria-label="GitHub">
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
             </svg>
           </a>
-          {/* LinkedIn Icon */}
           <a href="#" className="text-[#E2D1FE]/50 hover:text-white transition-colors relative z-10" aria-label="LinkedIn">
             <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
               <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
@@ -221,41 +229,46 @@ export function CreativeMinds() {
   };
 
   return (
-    <section ref={sectionRef} className="relative z-10 w-full py-20">
+    <section className="relative z-10 w-full py-20 overflow-hidden">
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
-        {/* Left Aligned Section Header */}
-        <div className="flex flex-col items-start text-left mb-16">
-          <div className={`inline-flex items-center gap-3 mb-6 ${isVisible ? 'animate-fade-in-left opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+        {/* Section Header */}
+        <div 
+          ref={headerRef}
+          className={`flex flex-col items-start text-left mb-16 transition-all duration-1000 ease-out ${
+            headerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}
+        >
+          <div className="inline-flex items-center gap-3 mb-6">
             <span className="w-8 h-[2px] bg-brand-gradient rounded-full"></span>
             <span className="text-sm font-semibold tracking-widest text-[#E2D1FE] uppercase">The Visionaries</span>
           </div>
-          <h2 className={`font-heading text-4xl md:text-5xl font-bold tracking-tight bg-silver-gradient bg-clip-text text-transparent pb-2 ${isVisible ? 'animate-wipe-reveal [animation-delay:200ms] opacity-0 fill-mode-forwards' : 'opacity-0'}`}>
+          <h2 className="font-heading text-4xl md:text-5xl font-bold tracking-tight bg-silver-gradient bg-clip-text text-transparent pb-2">
             Creative Minds Behind GenXCode
           </h2>
         </div>
 
-        {/* Pyramid Container */}
+        {/* Pyramid Container with Row-by-Row Staggered Scroll Animation */}
         <div className="flex flex-col gap-6">
           
-          {/* ROW 1: 2 Cards (Larger Peak) */}
-          <div className="flex flex-wrap justify-center gap-6">
-            {row1Team.map((member, idx) => renderCard(member, idx, 300, 2))}
+          {/* ROW 1 */}
+          <div ref={row1Ref} className="flex flex-wrap justify-center gap-6">
+            {row1Team.map((member, idx) => renderCard(member, idx, 2, row1Visible))}
           </div>
 
-          {/* ROW 2: 3 Cards */}
-          <div className="flex flex-wrap justify-center gap-6">
-            {row2Team.map((member, idx) => renderCard(member, idx, 600, 3))}
+          {/* ROW 2 */}
+          <div ref={row2Ref} className="flex flex-wrap justify-center gap-6">
+            {row2Team.map((member, idx) => renderCard(member, idx, 3, row2Visible))}
           </div>
 
-          {/* ROW 3: 3 Cards */}
-          <div className="flex flex-wrap justify-center gap-6">
-            {row3Team.map((member, idx) => renderCard(member, idx, 900, 3))}
+          {/* ROW 3 */}
+          <div ref={row3Ref} className="flex flex-wrap justify-center gap-6">
+            {row3Team.map((member, idx) => renderCard(member, idx, 3, row3Visible))}
           </div>
 
-          {/* ROW 4: 4 Cards */}
-          <div className="flex flex-wrap justify-center gap-6">
-            {row4Team.map((member, idx) => renderCard(member, idx, 1200, 4))}
+          {/* ROW 4 */}
+          <div ref={row4Ref} className="flex flex-wrap justify-center gap-6">
+            {row4Team.map((member, idx) => renderCard(member, idx, 4, row4Visible))}
           </div>
 
         </div>
