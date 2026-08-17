@@ -31,8 +31,8 @@ export function CosmolixCredit() {
             isVisible ? 'animate-fade-in-up opacity-0 fill-mode-forwards' : 'opacity-0'
           }`}
         >
-          {/* Subtle top micro-label */}
-          <span className="text-[10px] md:text-xs font-mono tracking-[0.3em] text-[#E2D1FE]/40 uppercase mb-2 group-hover:text-[#E2D1FE]/70 transition-colors duration-500">
+          {/* Subtle top micro-label - Size increased further */}
+          <span className="text-sm md:text-base font-mono tracking-[0.3em] text-[#E2D1FE]/40 uppercase mb-2 group-hover:text-[#E2D1FE]/70 transition-colors duration-500">
             A Product of
           </span>
 
@@ -43,7 +43,8 @@ export function CosmolixCredit() {
             rel="noopener noreferrer"
             className="relative inline-flex items-center gap-2 py-1 px-4 group/link"
           >
-            <span className="font-heading text-sm md:text-base font-semibold tracking-wider text-[#E2D1FE]/60 group-hover/link:text-foreground transition-colors duration-300">
+            {/* Company Name - Size increased significantly */}
+            <span className="font-heading text-2xl md:text-3xl font-semibold tracking-wider text-[#E2D1FE]/60 group-hover/link:text-foreground transition-colors duration-300">
               Cosmolix Pvt Ltd
             </span>
 
