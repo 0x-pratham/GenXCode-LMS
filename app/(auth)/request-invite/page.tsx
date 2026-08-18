@@ -101,7 +101,7 @@ export default function RequestInvitePage({
                       id="first_name"
                       name="first_name"
                       type="text"
-                      placeholder="John"
+                      placeholder="Pratham"
                       required
                       className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm transition-colors hover:bg-white/[0.04]"
                     />
@@ -112,7 +112,7 @@ export default function RequestInvitePage({
                       id="last_name"
                       name="last_name"
                       type="text"
-                      placeholder="Doe"
+                      placeholder="Patil"
                       required
                       className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:ring-accent focus-visible:border-accent rounded-xl h-12 backdrop-blur-sm transition-colors hover:bg-white/[0.04]"
                     />
