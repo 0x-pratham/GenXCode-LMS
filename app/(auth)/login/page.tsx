@@ -1,17 +1,43 @@
+"use client"; 
+
+import { use } from "react";
+import { useFormStatus } from "react-dom";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Code2, AlertCircle } from "lucide-react";
+import { Code2, AlertCircle, Loader2 } from "lucide-react";
 import { loginUser } from "@/app/actions/authActions";
 
-// Next.js 15+ allows async page components to read searchParams
-export default async function LoginPage({
+// Dedicated Submit Button Component to handle active loading states
+function LoginButton() {
+  const { pending } = useFormStatus();
+  
+  return (
+    <Button 
+      type="submit" 
+      disabled={pending}
+      className="w-full h-12 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg disabled:opacity-80 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+          Authenticating...
+        </>
+      ) : (
+        "Sign In"
+      )}
+    </Button>
+  );
+}
+
+// Next.js 15+ allows client components to read searchParams using the `use()` hook
+export default function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const params = await searchParams;
+  const params = use(searchParams);
   const errorMessage = params.error;
 
   return (
@@ -49,7 +75,7 @@ export default async function LoginPage({
 
           {/* Error Message Display */}
           {errorMessage && (
-            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded-lg backdrop-blur-md">
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded-lg backdrop-blur-md animate-fade-in-down">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{errorMessage}</span>
             </div>
@@ -86,12 +112,8 @@ export default async function LoginPage({
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow accent-glow-hover transition-all duration-300 hover:brightness-110 hover:-translate-y-[1px] shadow-lg"
-            >
-              Sign In
-            </Button>
+            {/* Smart Loading Button */}
+            <LoginButton />
           </form>
 
           <div className="text-center text-xs text-[#E2D1FE]/60 pt-4 border-t border-white/10">

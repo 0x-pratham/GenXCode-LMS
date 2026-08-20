@@ -6,8 +6,32 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Save, Flame, Trophy, Sparkles, ShieldCheck, AlertTriangle, Lock, CheckCircle2, AlertCircle } from "lucide-react";
+import { User, Mail, Save, Flame, Trophy, Sparkles, ShieldCheck, AlertTriangle, Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { updatePasswordAndProfile } from "@/app/actions/profileActions";
+import { Suspense } from "react";
+
+// Optimized Parallel Data Fetcher for Maximum Backend Speed
+async function getProfileData(userId: string) {
+  const supabase = await createClient();
+
+  // Fetch Profile, League, and XP Events CONCURRENTLY
+  // Schema states xp_events is the ultimate source of truth for points[cite: 19].
+  const [
+    { data: profile, error: profileError },
+    { data: league, error: leagueError },
+    { data: xpEvents, error: xpError }
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+    supabase.from("league_memberships").select("*").eq("user_id", userId).maybeSingle(),
+    supabase.from("xp_events").select("amount").eq("user_id", userId)
+  ]);
+
+  if (profileError) console.error("Error fetching profile:", profileError.message);
+  if (leagueError) console.error("Error fetching league:", leagueError.message);
+  if (xpError) console.error("Error fetching XP:", xpError.message);
+
+  return { profile, league, xpEvents };
+}
 
 // Next 15+ searchParams Promise mapping
 export default async function ProfilePage({
@@ -24,50 +48,10 @@ export default async function ProfilePage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 1. Fetch Profile Data
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  // 2. Fetch League Memberships (for fallback league name)
-  const { data: league } = await supabase
-    .from("league_memberships")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  // 3. Fetch EXACT XP Total from xp_events (The ultimate source of truth)[cite: 14]
-  const { data: xpEvents } = await supabase
-    .from("xp_events")
-    .select("amount")
-    .eq("user_id", user.id);
-
-  // Calculate actual total XP dynamically
-  const calculatedXp = xpEvents?.reduce((sum, ev) => sum + Number(ev.amount), 0) || 0;
-
-  const fullName = profile?.full_name || "";
-  const email = profile?.email || user.email || "";
-  const avatarUrl = profile?.avatar_url || "";
-  const role = profile?.role || "student";
-  const mustChangePassword = profile?.must_change_password || false;
-  
-  // Use calculated XP. If it's 0 but league has XP, use league XP as fallback.
-  const totalXp = calculatedXp > 0 ? calculatedXp : (league?.xp_total || 0);
-  
-  // Dynamic League assignment based on actual XP
-  let currentLeagueName = "code starter";
-  if (totalXp > 500) currentLeagueName = "code champion";
-  else if (totalXp > 200) currentLeagueName = "code builder";
-  
-  const currentLeague = league?.league?.replace('_', ' ') || currentLeagueName.replace('_', ' ');
-  const xpProgress = Math.min((totalXp % 1000) / 10, 100) || 5;
-
   return (
-    <div className="space-y-10 max-w-6xl mx-auto px-4 sm:px-6 pb-12 relative z-10">
+    <div className="space-y-10 max-w-6xl mx-auto px-4 sm:px-6 pb-12 relative z-10 focus:outline-none" tabIndex={0}>
       
-      {/* FLOATING TOAST NOTIFICATIONS */}
+      {/* FLOATING TOAST NOTIFICATIONS (Rendered Instantly) */}
       {successMessage && (
         <div className="fixed top-24 right-8 z-[100] animate-fade-in-down pointer-events-none">
           <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-6 py-4 rounded-2xl backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.2)] flex items-center gap-3">
@@ -85,6 +69,57 @@ export default async function ProfilePage({
         </div>
       )}
 
+      {/* Cinematic Header with Entry Animation */}
+      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
+              <User className="w-7 h-7 text-accent" />
+            </div>
+            <div>
+              Developer <span className="text-transparent bg-clip-text bg-silver-gradient drop-shadow-md">Profile</span>
+            </div>
+          </h1>
+          <p className="text-[#E2D1FE]/80 mt-4 text-lg font-medium drop-shadow-md max-w-xl">
+            Manage your personal credentials, identity, and track your global league statistics.
+          </p>
+        </div>
+      </div>
+
+      <Suspense fallback={<ProfileSkeleton />}>
+        <ProfileContent userId={user.id} userEmail={user.email || ""} />
+      </Suspense>
+
+    </div>
+  );
+}
+
+// Separated Component to handle Async Data & Suspense boundary smoothly
+async function ProfileContent({ userId, userEmail }: { userId: string, userEmail: string }) {
+  const { profile, league, xpEvents } = await getProfileData(userId);
+
+  // Calculate actual total XP dynamically from the raw events table[cite: 19]
+  const calculatedXp = xpEvents?.reduce((sum, ev) => sum + Number(ev.amount), 0) || 0;
+
+  const fullName = profile?.full_name || "";
+  const email = profile?.email || userEmail;
+  const avatarUrl = profile?.avatar_url || "";
+  const role = profile?.role || "student";
+  const mustChangePassword = profile?.must_change_password || false;
+  
+  // Use calculated XP. If it's 0 but league has XP, use league XP as fallback.
+  const totalXp = calculatedXp > 0 ? calculatedXp : (league?.xp_total || 0);
+  
+  // Dynamic League assignment based on actual XP
+  let currentLeagueName = "code starter";
+  if (totalXp > 500) currentLeagueName = "code champion";
+  else if (totalXp > 200) currentLeagueName = "code builder";
+  
+  const currentLeague = league?.league?.replace('_', ' ') || currentLeagueName.replace('_', ' ');
+  const xpProgress = Math.min((totalXp % 1000) / 10, 100) || 5;
+
+  return (
+    <>
       {/* MANDATORY PASSWORD CHANGE POPUP MODAL */}
       {mustChangePassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 animate-fade-in">
@@ -118,7 +153,7 @@ export default async function ProfilePage({
 
               <Button 
                 type="submit" 
-                className="w-full h-12 mt-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 text-foreground font-bold shadow-lg hover:brightness-110"
+                className="w-full h-12 mt-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 text-foreground font-bold shadow-lg hover:brightness-110 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 Update Password & Continue
               </Button>
@@ -126,23 +161,6 @@ export default async function ProfilePage({
           </div>
         </div>
       )}
-
-      {/* Cinematic Header */}
-      <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="font-heading text-4xl sm:text-5xl font-bold text-foreground drop-shadow-lg flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center backdrop-blur-md shadow-lg shrink-0">
-              <User className="w-7 h-7 text-accent" />
-            </div>
-            <div>
-              Developer <span className="text-transparent bg-clip-text bg-silver-gradient drop-shadow-md">Profile</span>
-            </div>
-          </h1>
-          <p className="text-[#E2D1FE]/80 mt-4 text-lg font-medium drop-shadow-md max-w-xl">
-            Manage your personal credentials, identity, and track your global league statistics.
-          </p>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
@@ -232,7 +250,7 @@ export default async function ProfilePage({
                     name="fullName" 
                     defaultValue={fullName} 
                     required 
-                    className="bg-black/20 border-white/10 text-foreground rounded-xl h-12 backdrop-blur-sm"
+                    className="bg-black/20 border-white/10 text-foreground rounded-xl h-12 backdrop-blur-sm focus-visible:ring-accent"
                   />
                 </div>
 
@@ -256,14 +274,14 @@ export default async function ProfilePage({
                     name="newPassword" 
                     type="password" 
                     placeholder="Enter new password to update" 
-                    className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 rounded-xl h-12 backdrop-blur-sm"
+                    className="bg-black/20 border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 rounded-xl h-12 backdrop-blur-sm focus-visible:ring-accent"
                   />
                 </div>
 
                 <div className="pt-4 flex justify-end">
                   <Button 
                     type="submit" 
-                    className="h-12 px-8 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow shadow-lg w-full sm:w-auto"
+                    className="h-12 px-8 rounded-xl bg-brand-gradient text-foreground border-none font-bold accent-glow shadow-lg w-full sm:w-auto hover:brightness-110 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                   >
                     <Save className="w-4 h-4 mr-2" /> Save Changes
                   </Button>
@@ -272,7 +290,52 @@ export default async function ProfilePage({
             </CardContent>
           </Card>
         </div>
-        
+      </div>
+    </>
+  );
+}
+
+// Shimmering Lazy Loading Skeleton for Instant User Feedback
+function ProfileSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-pulse">
+      {/* Left Column Skeleton */}
+      <div className="md:col-span-1 space-y-6">
+        <div className="bg-black/20 border border-white/10 rounded-3xl h-[340px] flex flex-col items-center pt-24 pb-8 px-6 relative overflow-hidden">
+          <div className="absolute top-0 w-full h-32 bg-white/5"></div>
+          <div className="w-28 h-28 rounded-full bg-white/10 border-4 border-black/80 absolute top-16 shadow-inner"></div>
+          <div className="h-6 w-3/4 bg-white/10 rounded mt-8 mb-2"></div>
+          <div className="h-4 w-1/2 bg-white/5 rounded mb-4"></div>
+          <div className="h-6 w-1/3 bg-white/5 rounded-full"></div>
+        </div>
+        <div className="bg-black/20 border border-white/10 rounded-3xl h-[200px] p-6">
+          <div className="h-5 w-1/3 bg-white/10 rounded mb-6"></div>
+          <div className="h-16 w-full bg-white/5 rounded-2xl mb-4"></div>
+          <div className="h-16 w-full bg-white/5 rounded-2xl"></div>
+        </div>
+      </div>
+      
+      {/* Right Column Skeleton */}
+      <div className="md:col-span-2">
+        <div className="bg-black/20 border border-white/10 rounded-3xl h-full min-h-[500px] p-8">
+          <div className="h-8 w-1/3 bg-white/10 rounded mb-2"></div>
+          <div className="h-4 w-1/2 bg-white/5 rounded mb-8"></div>
+          <div className="space-y-6">
+            <div>
+              <div className="h-4 w-1/4 bg-white/10 rounded mb-2"></div>
+              <div className="h-12 w-full bg-white/5 rounded-xl"></div>
+            </div>
+            <div>
+              <div className="h-4 w-1/4 bg-white/10 rounded mb-2"></div>
+              <div className="h-12 w-full bg-white/5 rounded-xl"></div>
+            </div>
+            <div>
+              <div className="h-4 w-1/4 bg-white/10 rounded mb-2"></div>
+              <div className="h-12 w-full bg-white/5 rounded-xl mb-1"></div>
+              <div className="h-3 w-1/3 bg-white/5 rounded"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

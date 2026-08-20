@@ -3,7 +3,31 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, Clock, Newspaper } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Calendar, Clock, Newspaper, Loader2 } from "lucide-react";
+import { Suspense } from "react";
+
+// Optimized Data Fetcher for Backend Speed
+async function getPostData(slug: string) {
+  const supabase = await createClient();
+
+  // Fetch the specific post by slug and join author details safely
+  // Note: RLS automatically hides drafts from normal users[cite: 16]. Admins can view them.
+  const { data: post, error } = await supabase
+    .from("posts")
+    .select(`
+      *,
+      author:profiles ( full_name, avatar_url )
+    `)
+    .eq("slug", slug)
+    .single();
+
+  if (error) {
+    console.error("Error fetching post:", error.message);
+  }
+
+  return post;
+}
 
 export default async function BlogPostPage({
   params,
@@ -19,26 +43,26 @@ export default async function BlogPostPage({
     redirect("/login");
   }
 
-  // 2. Fetch the specific post by slug and join author details safely
-  const { data: post, error } = await supabase
-    .from("posts")
-    .select(`
-      *,
-      author:profiles ( full_name, avatar_url )
-    `)
-    .eq("slug", slug)
-    .eq("status", "published")
-    .single();
+  return (
+    <Suspense fallback={<BlogPostSkeleton />}>
+      <BlogPostContent slug={slug} />
+    </Suspense>
+  );
+}
 
-  if (error || !post) {
+// Separated Component to handle Async Data & Suspense boundary smoothly
+async function BlogPostContent({ slug }: { slug: string }) {
+  const post = await getPostData(slug);
+
+  if (!post) {
     return (
-      <div className="max-w-xl mx-auto py-28 px-4 text-center space-y-4">
+      <div className="max-w-xl mx-auto py-28 px-4 text-center space-y-4 animate-fade-in-up">
         <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4 shadow-inner">
           <Newspaper className="w-8 h-8 text-[#E2D1FE]/40" />
         </div>
         <h2 className="font-heading text-2xl font-bold text-foreground">Post Not Found</h2>
         <p className="text-[#E2D1FE]/60 text-sm">The article you're looking for doesn't exist or has been archived.</p>
-        <Button asChild className="mt-2 bg-brand-gradient border-none font-bold accent-glow hover:brightness-110 rounded-xl h-11 px-6">
+        <Button asChild className="mt-2 bg-brand-gradient border-none font-bold accent-glow hover:brightness-110 rounded-xl h-11 px-6 focus-visible:ring-2 focus-visible:ring-accent">
           <Link href="/blogs">Return to Blogs</Link>
         </Button>
       </div>
@@ -55,6 +79,8 @@ export default async function BlogPostPage({
     day: "numeric",
     year: "numeric",
   });
+  
+  const isDraft = post.status === 'draft';
 
   // --- SMART CONTENT SANITIZER & PARSER ---
   let rawBody: any = post.body;
@@ -86,11 +112,11 @@ export default async function BlogPostPage({
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-24 relative z-10 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-8 max-w-5xl mx-auto pb-24 relative z-10 px-4 sm:px-6 lg:px-8 focus:outline-none" tabIndex={0}>
       
       {/* Back Navigation */}
       <div className="animate-fade-in-up [animation-delay:100ms] opacity-0 fill-mode-forwards pt-4">
-        <Link href="/blogs" className="inline-flex items-center text-xs font-bold text-[#E2D1FE]/70 hover:text-accent transition-colors group bg-black/30 px-4 py-2 rounded-xl border border-white/5 shadow-inner w-fit">
+        <Link href="/blogs" className="inline-flex items-center text-xs font-bold text-[#E2D1FE]/70 hover:text-accent transition-colors group bg-black/30 px-4 py-2 rounded-xl border border-white/5 shadow-inner w-fit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
           <ArrowLeft className="w-3.5 h-3.5 mr-2 transition-transform group-hover:-translate-x-1" /> Back to Insights
         </Link>
       </div>
@@ -100,6 +126,11 @@ export default async function BlogPostPage({
         {/* Article Meta & Header Section */}
         <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards space-y-4 text-center sm:text-left">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-semibold text-[#E2D1FE]/60">
+            {isDraft && (
+              <Badge variant="outline" className="bg-white/5 text-[#E2D1FE]/60 border-white/10 uppercase tracking-wider">
+                Draft Preview
+              </Badge>
+            )}
             <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full border border-white/5">
               <Calendar className="w-3.5 h-3.5 text-accent" /> {formattedDate}
             </span>
@@ -108,7 +139,7 @@ export default async function BlogPostPage({
             </span>
           </div>
 
-          <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight">
+          <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight tracking-tight drop-shadow-md">
             {post.title}
           </h1>
 
@@ -170,6 +201,49 @@ export default async function BlogPostPage({
         </article>
       </div>
 
+    </div>
+  );
+}
+
+// Shimmering Lazy Loading Skeleton for Instant User Feedback
+function BlogPostSkeleton() {
+  return (
+    <div className="space-y-8 max-w-5xl mx-auto pb-24 px-4 sm:px-6 lg:px-8 animate-pulse pt-4">
+      <div className="w-24 h-8 bg-white/10 rounded-xl mb-8"></div>
+      
+      <div className="max-w-3xl mx-auto space-y-8">
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <div className="w-28 h-6 bg-white/10 rounded-full"></div>
+            <div className="w-24 h-6 bg-white/10 rounded-full"></div>
+          </div>
+          
+          <div className="w-full h-12 bg-white/10 rounded-lg"></div>
+          <div className="w-3/4 h-12 bg-white/10 rounded-lg"></div>
+          
+          <div className="flex items-center gap-3 pt-2">
+            <div className="w-10 h-10 rounded-full bg-white/10"></div>
+            <div className="space-y-2">
+              <div className="w-32 h-4 bg-white/10 rounded"></div>
+              <div className="w-40 h-3 bg-white/5 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full h-[280px] sm:h-[380px] bg-black/40 border border-white/10 rounded-3xl flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-accent animate-spin" />
+        </div>
+
+        <div className="bg-black/20 border border-white/10 rounded-3xl p-6 sm:p-10 lg:p-12">
+          <div className="w-full h-24 bg-white/5 rounded-2xl mb-8"></div>
+          <div className="space-y-4">
+            <div className="w-full h-6 bg-white/10 rounded"></div>
+            <div className="w-full h-6 bg-white/10 rounded"></div>
+            <div className="w-5/6 h-6 bg-white/10 rounded"></div>
+            <div className="w-3/4 h-6 bg-white/10 rounded"></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
  * - Solves perfectly (colors align on each face)
  * - Glossy, iridescent luxury glass finish
  * - NEW: Drag to rotate, Raycast individual cube hover, Click to turbo-speed, Double-click to pause
+ * - FIXED: WebGL Float Precision Warnings resolved.
  */
 export default function PurpleRubiksCube({ size = 520 }) {
   const mountRef = useRef(null);
@@ -27,7 +28,8 @@ export default function PurpleRubiksCube({ size = 520 }) {
     const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
     camera.position.set(0, 0, 9.5);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // FIXED: Added precision: "mediump" to prevent the X4122 double precision warnings in the console
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, precision: "mediump" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -71,7 +73,6 @@ export default function PurpleRubiksCube({ size = 520 }) {
       ctx.fillRect(0, 95, 512, 40);
       ctx.globalAlpha = 1;
 
-      // Type annotations removed here
       const glowSpot = (x, y, r, color, alpha) => {
         const g = ctx.createRadialGradient(x, y, 0, x, y, r);
         g.addColorStop(0, color);
@@ -95,11 +96,12 @@ export default function PurpleRubiksCube({ size = 520 }) {
     envTex.dispose();
 
     // ---------- Premium Glassy Materials ----------
+    // Minor tweaks to iridescence to maintain luxury look while saving precision
     const coreMat = new THREE.MeshPhysicalMaterial({
       color: 0x110826, 
       metalness: 0.7,
       roughness: 0.2,
-      clearcoat: 1.0,
+      clearcoat: 0.9,
       envMapIntensity: 1.5,
     });
 
@@ -115,12 +117,12 @@ export default function PurpleRubiksCube({ size = 520 }) {
     const faceMats = faceColors.map(color => new THREE.MeshPhysicalMaterial({
       color: color,
       metalness: 0.2,
-      roughness: 0.1,
-      clearcoat: 1.0, 
-      clearcoatRoughness: 0.05,
-      iridescence: 0.8, 
-      iridescenceIOR: 1.4,
-      envMapIntensity: 1.8, 
+      roughness: 0.15,
+      clearcoat: 0.9, 
+      clearcoatRoughness: 0.1,
+      iridescence: 0.6, 
+      iridescenceIOR: 1.3,
+      envMapIntensity: 1.5, 
     }));
 
     // ---------- Build 26 Cubelets ----------
@@ -131,9 +133,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
     const gap = 1.0;
     const grid = [-1, 0, 1];
     
-    // Type annotation removed
     const cubelets = [];
-
     const geo = new RoundedBoxGeometry(cubeletSize, cubeletSize, cubeletSize, 4, 0.08);
 
     for (const x of grid) {
@@ -167,7 +167,6 @@ export default function PurpleRubiksCube({ size = 520 }) {
     const PAUSE_SCRAMBLED = 2.0;
     const PAUSE_SOLVED = 3.0;
 
-    // Type annotations removed
     const turnState = { 
         active: false, 
         axis: 'x', 
@@ -256,7 +255,7 @@ export default function PurpleRubiksCube({ size = 520 }) {
         }
       } else if (phase === "solve") {
         if (history.length > 0) {
-          const move = history.pop(); // Non-null assertion removed
+          const move = history.pop(); 
           beginTurn(move.axis, move.layer, -move.direction, t, false);
         } else {
           phase = "pauseSolved";
@@ -273,10 +272,14 @@ export default function PurpleRubiksCube({ size = 520 }) {
     let isDragging = false;
     let dragDistance = 0;
     let lastPointer = { x: 0, y: 0 };
+    
+    // UX ADDON: Added momentum/inertia variables for smoother dragging
     let manualRotX = 0.42;
     let manualRotY = 0.6;
-    let timeSinceLastInteraction = 0;
+    let velocityX = 0;
+    let velocityY = 0;
     
+    let timeSinceLastInteraction = 0;
     let hovering = false;
     let speedMultiplier = 1;
     let isAlgorithmPaused = false;
@@ -286,6 +289,8 @@ export default function PurpleRubiksCube({ size = 520 }) {
       isDragging = true;
       dragDistance = 0;
       lastPointer = { x: e.clientX, y: e.clientY };
+      velocityX = 0;
+      velocityY = 0;
       mount.style.cursor = "grabbing";
       timeSinceLastInteraction = 0;
     }
@@ -314,8 +319,13 @@ export default function PurpleRubiksCube({ size = 520 }) {
         const dy = e.clientY - lastPointer.y;
         dragDistance += Math.abs(dx) + Math.abs(dy);
         
-        manualRotY += dx * 0.006;
-        manualRotX += dy * 0.006;
+        // Apply inertia velocity
+        velocityY = dx * 0.006;
+        velocityX = dy * 0.006;
+        
+        manualRotY += velocityY;
+        manualRotX += velocityX;
+        
         lastPointer = { x: e.clientX, y: e.clientY };
         timeSinceLastInteraction = 0;
       }
@@ -380,7 +390,14 @@ export default function PurpleRubiksCube({ size = 520 }) {
       // Resume auto-rotation if idle for 3 seconds
       if (!isDragging) {
         timeSinceLastInteraction += dt;
+        
+        // UX ADDON: Apply smooth friction to inertia
+        manualRotX += velocityX;
+        manualRotY += velocityY;
+        velocityX *= 0.92;
+        velocityY *= 0.92;
       }
+      
       if (timeSinceLastInteraction > 3) {
         manualRotY += dt * 0.15; // Slow ambient spin
       }

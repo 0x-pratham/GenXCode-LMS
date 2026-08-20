@@ -150,9 +150,38 @@ export default function RequestInvitePage({
                     name="reason"
                     required
                     rows={2}
-                    placeholder="Briefly share your tech stack..."
+                    placeholder="Briefly share your tech stack... (Press Enter to submit, Shift+Enter for new line)"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        e.currentTarget.form?.requestSubmit();
+                      }
+                    }}
                     className="flex w-full bg-black/20 border border-white/10 text-foreground placeholder:text-[#E2D1FE]/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:border-accent rounded-xl p-3 text-sm resize-none backdrop-blur-sm transition-colors hover:bg-white/[0.04]"
                   />
+                </div>
+
+                {/* Mandatory Checkbox Agreement */}
+                <div className="flex items-start gap-3 animate-fade-in-left [animation-delay:800ms] opacity-0 fill-mode-forwards pt-1">
+                  <div className="flex items-center h-5 mt-[2px]">
+                    <input
+                      id="terms"
+                      name="terms"
+                      type="checkbox"
+                      required
+                      className="w-4 h-4 rounded border-white/20 bg-white/5 accent-accent focus:ring-1 focus:ring-accent focus:ring-offset-0 cursor-pointer transition-all shrink-0"
+                    />
+                  </div>
+                  <Label htmlFor="terms" className="text-[11px] sm:text-xs text-[#E2D1FE]/60 font-normal leading-relaxed cursor-pointer">
+                    I verify my details and agree to the{" "}
+                    <Link href="/terms" className="text-white hover:text-accent transition-colors underline underline-offset-2 decoration-white/30 hover:decoration-accent">
+                      Terms of Service
+                    </Link>
+                    {" "}and{" "}
+                    <Link href="/privacy" className="text-white hover:text-accent transition-colors underline underline-offset-2 decoration-white/30 hover:decoration-accent">
+                      Privacy Policy
+                    </Link>.
+                  </Label>
                 </div>
 
                 <div className="animate-fade-in-up [animation-delay:900ms] opacity-0 fill-mode-forwards pt-2">
@@ -201,7 +230,6 @@ export default function RequestInvitePage({
             FIX: Square Box Approach with 4-sided dissolve 
             Using combined linear gradients to fade Top, Bottom, Left, and Right edges perfectly into the purple background.
           */}
-          {/* REMOVED mb-8 to bring the image closer to the text below it */}
           <div className="animate-fade-in-up [animation-delay:200ms] opacity-0 fill-mode-forwards">
             <div 
               className="relative w-[350px] h-[350px] xl:w-[450px] xl:h-[450px]"
@@ -225,7 +253,6 @@ export default function RequestInvitePage({
           </div>
 
           {/* High Impact Pure White Heading */}
-          {/* ADDED -mt-6 to pull the heading up towards the masked image */}
           <h2 className="-mt-6 animate-text-focus-in [animation-delay:500ms] opacity-0 fill-mode-forwards font-heading text-5xl xl:text-6xl font-bold mb-4 bg-silver-gradient bg-clip-text text-transparent drop-shadow-2xl leading-tight">
             Proof of Work <br/>
             Matters.
