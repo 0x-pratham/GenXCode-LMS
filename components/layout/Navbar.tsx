@@ -20,7 +20,7 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Turn the bar into a solid deep-glass capsule once the page scrolls
+  // Turn the bar into a solid deep-glass background once the page scrolls
   React.useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 15);
     onScroll();
@@ -42,7 +42,14 @@ export function Navbar() {
   }, [isMobileMenuOpen]);
 
   return (
-    <header className="fixed top-4 inset-x-0 z-50 flex flex-col items-center px-4 sm:px-6 pointer-events-none">
+    <header 
+      className={cn(
+        "fixed top-0 inset-x-0 z-50 flex flex-col items-center pointer-events-none transition-all duration-500 ease-out",
+        isScrolled 
+          ? "bg-[#0C0224]/50 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)] py-3" 
+          : "bg-transparent border-b border-transparent py-4"
+      )}
+    >
       {/* Dimming backdrop behind the mobile menu — click outside to close */}
       {isMobileMenuOpen && (
         <div
@@ -53,18 +60,12 @@ export function Navbar() {
       )}
 
       {/*
-        Outer Container: Premium ultra-glass capsule on scroll.
-        Height increased slightly to accommodate larger logo.
+        Inner Container: Holds the actual navigation items.
+        Removed capsule styling, relies on the header for the full-width blur.
       */}
-      <div
-        className={cn(
-          "relative z-50 flex w-full max-w-6xl items-center justify-between h-[72px] pointer-events-auto rounded-full transition-all duration-500 ease-out px-3",
-          isScrolled
-            ? "bg-[#0C0224]/50 backdrop-blur-2xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
-            : "bg-transparent border border-transparent"
-        )}
-      >
-        {/* 1. Left: Brand / Logo (Capsule hover effect removed, pure logo pop) */}
+      <div className="relative z-50 flex w-full max-w-7xl items-center justify-between px-4 sm:px-6 pointer-events-auto h-[60px]">
+        
+        {/* 1. Left: Brand / Logo */}
         <Link
           href="/"
           className="group flex items-center gap-3 rounded-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -115,7 +116,7 @@ export function Navbar() {
         </nav>
 
         {/* 3. Right: CTA Buttons */}
-        <div className="hidden md:flex items-center gap-3 pr-2">
+        <div className="hidden md:flex items-center gap-3">
           <Link href={authLinks.login}>
             <Button
               variant="ghost"
@@ -125,7 +126,6 @@ export function Navbar() {
             </Button>
           </Link>
           <Link href={authLinks.requestInvite}>
-            {/* Removed the excessive glow shadows */}
             <Button 
               variant="premium" 
               className="rounded-full px-6 font-bold transition-all duration-300 hover:-translate-y-0.5"
@@ -137,7 +137,7 @@ export function Navbar() {
 
         {/* Mobile Menu Toggle Button */}
         <button
-          className="flex md:hidden p-2.5 mr-2 text-[#E2D1FE] hover:text-white transition-all duration-300 rounded-full border border-transparent hover:bg-white/[0.06] hover:border-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex md:hidden p-2.5 text-[#E2D1FE] hover:text-white transition-all duration-300 rounded-full border border-transparent hover:bg-white/[0.06] hover:border-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setIsMobileMenuOpen((open) => !open)}
           aria-label="Toggle menu"
           aria-expanded={isMobileMenuOpen}
@@ -147,54 +147,55 @@ export function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Navigation Dropdown (Premium Glass Panel) */}
+      {/* Mobile Navigation Dropdown */}
       <div
         id="mobile-menu"
         className={cn(
-          "md:hidden w-full max-w-6xl mt-4 overflow-hidden transition-all duration-500 ease-in-out rounded-3xl pointer-events-auto relative z-50",
+          "md:hidden w-full px-4 overflow-hidden transition-all duration-500 ease-in-out pointer-events-auto relative z-50",
           isMobileMenuOpen
-            ? "max-h-[500px] opacity-100 bg-[#0C0224]/70 backdrop-blur-2xl border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
-            : "max-h-0 opacity-0 border-transparent"
+            ? "max-h-[500px] opacity-100 mt-4 pb-6"
+            : "max-h-0 opacity-0 m-0 p-0"
         )}
       >
-        <nav className="flex flex-col px-6 py-8 space-y-2">
-          {publicNavLinks.map((link, i) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={isActive ? "page" : undefined}
-                style={isMobileMenuOpen ? { animationDelay: `${i * 60}ms` } : undefined}
-                className={cn(
-                  "text-lg font-semibold tracking-wide transition-all duration-300 px-5 py-3 rounded-2xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)]",
-                  isActive
-                    ? "bg-white/[0.08] border-white/15 text-white shadow-sm"
-                    : "border-transparent bg-transparent text-[#E2D1FE]/72 hover:bg-white/[0.04] hover:text-white hover:border-white/10",
-                  isMobileMenuOpen && "opacity-0 animate-fade-in-right fill-mode-forwards"
-                )}
-              >
-                {link.title}
+        <div className="bg-[#0C0224]/80 backdrop-blur-2xl border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.7)] rounded-3xl overflow-hidden">
+          <nav className="flex flex-col px-6 py-8 space-y-2">
+            {publicNavLinks.map((link, i) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive ? "page" : undefined}
+                  style={isMobileMenuOpen ? { animationDelay: `${i * 60}ms` } : undefined}
+                  className={cn(
+                    "text-lg font-semibold tracking-wide transition-all duration-300 px-5 py-3 rounded-2xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-ring)]",
+                    isActive
+                      ? "bg-white/[0.08] border-white/15 text-white shadow-sm"
+                      : "border-transparent bg-transparent text-[#E2D1FE]/72 hover:bg-white/[0.04] hover:text-white hover:border-white/10",
+                    isMobileMenuOpen && "opacity-0 animate-fade-in-right fill-mode-forwards"
+                  )}
+                >
+                  {link.title}
+                </Link>
+              );
+            })}
+            
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent my-4" />
+            
+            <div className="flex flex-col gap-3 pt-2">
+              <Link href={authLinks.login} className="w-full">
+                <Button variant="outline" className="w-full justify-center rounded-2xl h-12 text-base font-medium border-white/10 hover:bg-white/5 hover:text-white">
+                  Sign In
+                </Button>
               </Link>
-            );
-          })}
-          
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent my-4" />
-          
-          <div className="flex flex-col gap-3 pt-2">
-            <Link href={authLinks.login} className="w-full">
-              <Button variant="outline" className="w-full justify-center rounded-2xl h-12 text-base font-medium border-white/10 hover:bg-white/5 hover:text-white">
-                Sign In
-              </Button>
-            </Link>
-            <Link href={authLinks.requestInvite} className="w-full">
-              {/* Removed the excessive glow shadow here as well */}
-              <Button variant="premium" className="w-full justify-center rounded-2xl h-12 text-base font-bold">
-                Request Invite
-              </Button>
-            </Link>
-          </div>
-        </nav>
+              <Link href={authLinks.requestInvite} className="w-full">
+                <Button variant="premium" className="w-full justify-center rounded-2xl h-12 text-base font-bold">
+                  Request Invite
+                </Button>
+              </Link>
+            </div>
+          </nav>
+        </div>
       </div>
     </header>
   );
